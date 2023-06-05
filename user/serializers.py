@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from Core.models import Company
+from Core.models import *
 from django.contrib.auth.hashers import make_password
 from Core.serializers import AssetsSerializer
 
@@ -29,3 +29,16 @@ class GetStaffSerializer(serializers.ModelSerializer):
         assets = obj.assets_incharge.all()
         asset_serializer = AssetsSerializer(assets, many=True)
         return asset_serializer.data
+    
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= Order
+        fields = "__all__"
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= Payments
+        fields = "__all__"

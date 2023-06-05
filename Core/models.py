@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-
+from datetime import datetime
 
 class CompanyManager(BaseUserManager):
 
@@ -46,9 +46,14 @@ class Company(AbstractBaseUser):
     user_type = models.CharField(max_length=10,default='manager')
     number = models.CharField(max_length=12)
 
+    monthly_purchase_cost = models.IntegerField(blank=True)
+    monthly_purchase_quantity = models.IntegerField(blank=True)
+    total_outstanding = models.IntegerField(blank=True)
+    total_purchase_cost = models.IntegerField(blank=True)
+    total_purchase_quantity = models.IntegerField(blank=True)
+
     #staff additional information
     company_id = models.IntegerField(blank=True,null=True)
-
 
     legal_name = models.CharField(max_length=255)
     trade_name = models.CharField(max_length=255,blank=True)
@@ -93,3 +98,30 @@ class Assets(models.Model):
 class AssetLocations(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE)
     location = models.TextField(blank=True)
+    location2 = models.TextField(blank=True)
+    location3 = models.TextField(blank=True)
+
+
+class Order(models.Model):
+    company = models.ForeignKey(Company,on_delete=models.CASCADE)
+    ordered_by = models.ForeignKey(Company,on_delete=models.CASCADE,related_name='ordered_user')
+    quantity = models.IntegerField()
+    asset = models.ForeignKey(Assets,on_delete=models.CASCADE)
+    diesel_price = models.FloatField()
+    total_price = models.FloatField()
+    order_status = models.CharField(max_length=100,default='ordered')
+    created_at = models.DateTimeField(auto_now=True)
+    ordered_user_type = models.CharField(max_length=100)
+    # payment_status = models.CharField(default=True)
+
+
+class Payments(models.Model):
+    company = models.ForeignKey(Company,on_delete=models.CASCADE)
+    payment_type = models.CharField(max_length=100) # paid purchase
+    payment_price = models.IntegerField()
+    created_at = models.DateTimeField(auto_now=True)
+    created_month = models.CharField(max_length=100)
+    payment_method = models.CharField(max_length=100,blank=True)
+
+
+

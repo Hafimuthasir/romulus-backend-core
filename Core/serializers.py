@@ -49,3 +49,8 @@ class AssetsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assets
         fields = '__all__'
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetLocations
+        fields = '__all__'

@@ -82,7 +82,7 @@ class CompanyLoginView(APIView):
 
 
 class CheckAuthView(APIView):
-    authentication_classes = [JWTAuthentication]
+    authentication_classes = [JWTAuthentication]    
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
@@ -98,6 +98,30 @@ class CheckAuthView(APIView):
         }
         return Response(response_data,status=status.HTTP_200_OK)
     
+
+
+class AssetLocationsView(APIView):
+    def post(self,request):
+        serializer = LocationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(200)
+        print(serializer.errors)
+        return Response(500)
+    
+    def get(self,request,id):
+        loc_data = AssetLocations.objects.filter(company=id)
+        serializer = LocationSerializer(loc_data,many=True)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+    
+    def delete(self,request,id):
+        try:
+            obj = AssetLocations.objects.get(id=id)
+            obj.delete()
+            return Response(200)
+        except:
+            return Response(500)
+
 
 class SampleGet(APIView):
     def get(self,request):

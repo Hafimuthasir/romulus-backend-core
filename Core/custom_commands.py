@@ -5,7 +5,7 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Create a superuser with a specified email address.'
+  
 
     def add_arguments(self, parser):
         parser.add_argument('--email', type=str, help='Email address for the superuser.')
