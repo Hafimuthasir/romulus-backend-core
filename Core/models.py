@@ -46,11 +46,11 @@ class Company(AbstractBaseUser):
     user_type = models.CharField(max_length=10,default='manager')
     number = models.CharField(max_length=12)
 
-    monthly_purchase_cost = models.IntegerField(blank=True)
-    monthly_purchase_quantity = models.IntegerField(blank=True)
-    total_outstanding = models.IntegerField(blank=True)
-    total_purchase_cost = models.IntegerField(blank=True)
-    total_purchase_quantity = models.IntegerField(blank=True)
+    monthly_purchase_cost = models.IntegerField(blank=True,null=True)
+    monthly_purchase_quantity = models.IntegerField(blank=True,null=True)
+    total_outstanding = models.IntegerField(blank=True,null=True)
+    total_purchase_cost = models.IntegerField(blank=True,null=True)
+    total_purchase_quantity = models.IntegerField(blank=True,null=True)
 
     #staff additional information
     company_id = models.IntegerField(blank=True,null=True)
