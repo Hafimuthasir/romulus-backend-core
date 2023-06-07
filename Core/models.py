@@ -122,6 +122,7 @@ class Payments(models.Model):
     created_at = models.DateTimeField(auto_now=True)
     created_month = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100,blank=True)
+    transaction_id = models.CharField(max_length=100,blank=True)
 
 
 

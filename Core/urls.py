@@ -9,5 +9,6 @@ urlpatterns = [
     path('checkauth',CheckAuthView.as_view()),
     path('location',AssetLocationsView.as_view()),
     path('location/<id>',AssetLocationsView.as_view()),
+    path('add-payment',AddPayment.as_view()),
     path('sampleget',SampleGet.as_view()),
 ]

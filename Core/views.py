@@ -17,6 +17,8 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, permissions
 from .models import Assets
 from .serializers import AssetsSerializer
+from user.serializers import PaymentSerializer
+from django.db import transaction
 
 # Create your views here.
 
@@ -121,6 +123,29 @@ class AssetLocationsView(APIView):
             return Response(200)
         except:
             return Response(500)
+
+
+
+
+class AddPayment(APIView):
+    def post(self, request):
+        amount = request.data['payment_price']
+        company = request.data['company']
+        company_instance = Company.objects.get(id=company)
+
+        if int(company_instance.total_outstanding) < int(amount):
+            return Response(data=f"Company ({company_instance.username}) outstanding amount is less than the entered amount", status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = PaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+                company_instance.total_outstanding -= int(amount)
+                company_instance.save()
+            return Response(data='Payment added successfully', status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class SampleGet(APIView):

@@ -54,3 +54,4 @@ class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetLocations
         fields = '__all__'
+

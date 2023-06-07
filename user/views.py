@@ -91,6 +91,7 @@ class OrderAPIView(APIView):
             company.total_purchase_cost =  company.total_purchase_cost + order.total_price
             company.total_purchase_quantity = company.total_purchase_quantity + order.quantity
             company.save()
+
             print(company.total_outstanding)
             if payment_serializer.is_valid():
                 with transaction.atomic():
@@ -146,8 +147,23 @@ class TransactionsAPIView(APIView):
         paginator = self.pagination_class()
         paginated_queryset = paginator.paginate_queryset(queryset, request)
         serializer = PaymentSerializer(paginated_queryset, many=True)
+        
         return paginator.get_paginated_response(serializer.data)
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class PopulateOrder(APIView):
     def get(self,request):
