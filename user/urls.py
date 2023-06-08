@@ -10,6 +10,7 @@ urlpatterns = [
     path('order',OrderAPIView.as_view()),
     path('checkauth',CheckAuthView.as_view()),
     path('order-history/', OrderHistoryAPIView.as_view(), name='order-history'),
-    path('transactions', TransactionsAPIView.as_view(), name='order-history'),
+    path('transactions', TransactionsAPIView.as_view()),
+    path('dashboard_data/<int:id>', DashboardView.as_view()),
     path('populateorder',PopulateOrder.as_view())
 ]

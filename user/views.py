@@ -12,6 +12,7 @@ from django.db import transaction
 from Core.serializers import CompanyLoginSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.db.models import Sum
 
 
 
@@ -92,9 +93,9 @@ class OrderAPIView(APIView):
             
             payment_serializer = PaymentSerializer(data=payment_data)
             company = order.company
-            company.total_outstanding = company.total_outstanding + order.total_price
-            company.total_purchase_cost =  company.total_purchase_cost + order.total_price
-            company.total_purchase_quantity = company.total_purchase_quantity + order.quantity
+            company.total_outstanding = (company.total_outstanding or 0) + order.total_price
+            company.total_purchase_cost =  (company.total_purchase_cost or 0) + order.total_price
+            company.total_purchase_quantity = (company.total_purchase_quantity or 0) + order.quantity
             company.save()
 
             print(company.total_outstanding)
@@ -154,7 +155,36 @@ class TransactionsAPIView(APIView):
         serializer = PaymentSerializer(paginated_queryset, many=True)
         
         return paginator.get_paginated_response(serializer.data)
-    
+
+
+class DashboardView(APIView):
+    permission_classes = [AllowAny]
+    def get(self,request,id):
+        try : 
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+
+            total_price = Order.objects.filter(company=id,created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
+            total_quantity = Order.objects.filter(company=id,created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
+
+            company_obj = Company.objects.get(id=id)
+
+            dashboard_data = {
+                'monthly_purchase_cost' : total_price,
+                'monthly_purchase_quantity' : total_quantity,
+                'total_outstanding': company_obj.total_outstanding
+            }
+
+            return Response(data=dashboard_data,status=status.HTTP_200_OK)
+        
+        except:
+            return Response('Something went wrong',status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
 
 # class UserLoginView(APIView):
 #     permission_classes = [AllowAny]
