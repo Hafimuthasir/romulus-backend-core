@@ -66,13 +66,17 @@ class CompanyLoginView(APIView):
             res.set_cookie(
             key='access_token',
             value=str(refresh_token.access_token),
-            httponly=True,     
+            httponly=True,  
+            samesite='None',   
+            secure=True
             )
 
             res.set_cookie(
             key='refresh_token',
             value=str(refresh_token),
             httponly=True,
+            samesite='None',
+            secure=True
             )
             
             res.data = str(refresh_token.access_token)
@@ -82,10 +86,40 @@ class CompanyLoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
+class CompanyLogoutView(APIView):
+    # permission_classes = [AllowAny]
+    def get(self, request):
+        # Clear the access_token and refresh_token cookies by setting their values to empty
+        res = JsonResponse({'message': 'Logout successful'})
+        # response.set_cookie('access_token', '', max_age=0, secure=True)
+        # response.set_cookie('refresh_token', '', max_age=0, secure=True)
+        res.set_cookie(
+            key='access_token',
+            value='',
+            httponly=True,  
+            samesite='None',   
+            secure=True,
+            max_age=0,
+            )
+
+        res.set_cookie(
+            key='refresh_token',
+            value='',
+            httponly=True,
+            samesite='None',
+            secure=True,
+            max_age=0
+            )
+        
+        return res
+    
 
 class CheckAuthView(APIView):
     authentication_classes = [JWTAuthentication]    
     permission_classes = [IsAuthenticated]
+   
+    # permission_classes = [AllowAny]
+
     def get(self, request):
         user = request.user
         response_data = {
@@ -93,8 +127,8 @@ class CheckAuthView(APIView):
             'user': {
                 'id': user.id,
                 'username': user.username,
-                'user_type': user.user_type,
-                'company_id':user.company_id
+                # 'user_type': user.user_type,
+                # 'company_id':user.company_id
                 # Include any other user information you need
             }
         }
@@ -123,7 +157,6 @@ class AssetLocationsView(APIView):
             return Response(200)
         except:
             return Response(500)
-
 
 
 

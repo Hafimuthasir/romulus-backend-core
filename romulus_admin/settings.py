@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-tc$u(7zo3n$mg_h=opw2ot8p=+eo-lb7s_yq1mx#0i#4t38mi8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -128,21 +128,21 @@ WSGI_APPLICATION = 'romulus_admin.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': 'rm3',
-    #     'USER': 'postgres',
-    #     'PASSWORD':'admin',
-    #     'HOST':'localhost'
-    # }
-
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'core',
-        'USER': 'romulus',
+        'NAME': 'rm3',
+        'USER': 'postgres',
         'PASSWORD':'admin',
         'HOST':'localhost'
     }
+
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.postgresql',
+    #     'NAME': 'core',
+    #     'USER': 'romulus',
+    #     'PASSWORD':'admin',
+    #     'HOST':'localhost'
+    # }
 
 }
 
@@ -198,5 +198,8 @@ CORS_ALLOWED_METHODS = [
 ]
 
 CORS_ORIGIN_ALLOW_ALL = True
+# CORS_ORIGIN_WHITELIST = [
+#     'https://romulus-frontend-admin.vercel.app',
+# ]
 CORS_ALLOW_CREDENTIALS = True
 # CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']

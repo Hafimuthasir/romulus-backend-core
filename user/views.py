@@ -9,6 +9,11 @@ from .serializers import *
 from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 from django.utils import timezone
 from django.db import transaction
+from Core.serializers import CompanyLoginSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
+
 
 
 # Create your views here.
@@ -151,13 +156,66 @@ class TransactionsAPIView(APIView):
         return paginator.get_paginated_response(serializer.data)
     
 
+# class UserLoginView(APIView):
+#     permission_classes = [AllowAny]
+#     def post(self, request):
+#         serializer = CompanyLoginSerializer(data=request.data)
+#         if serializer.is_valid():
+#             company = serializer.validated_data['company']
+#             refresh_token = RefreshToken.for_user(company)
+
+#             response_data = {
+#                 'message': 'Login successful',
+#                 'user': {
+#                     'id': company.id,
+#                     'username': company.username,
+#                     # Include any other user information you need
+#                 }
+#             }
+#             res= Response()
+#             res.set_cookie(
+#             key='access_token',
+#             value=str(refresh_token.access_token),
+#             httponly=True,  
+#             # samesite='None',   
+#             secure=True
+#             )
+
+#             res.set_cookie(
+#             key='refresh_token',
+#             value=str(refresh_token),
+#             httponly=True,
+#             samesite='None',
+#             secure=True
+#             )
+            
+#             res.data = str(refresh_token.access_token)
+#             res["X-CSRFToken"] = csrf.get_token(request)
+#             return res
+
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
+class CheckAuthView(APIView):
+    authentication_classes = [JWTAuthentication]    
+    permission_classes = [IsAuthenticated]
+   
+    # permission_classes = [AllowAny]
 
-
-
-
+    def get(self, request):
+        user = request.user
+        response_data = {
+            'message': 'Authentication successful',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'user_type': user.user_type,
+                'company_id':user.company_id
+                # Include any other user information you need
+            }
+        }
+        return Response(response_data,status=status.HTTP_200_OK)
 
 
 
