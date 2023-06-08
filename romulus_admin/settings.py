@@ -128,21 +128,23 @@ WSGI_APPLICATION = 'romulus_admin.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'rm3',
-        'USER': 'postgres',
-        'PASSWORD':'admin',
-        'HOST':'localhost'
-    }
 
     # 'default': {
     #     'ENGINE': 'django.db.backends.postgresql',
-    #     'NAME': 'core',
-    #     'USER': 'romulus',
+    #     'NAME': 'rm3',
+    #     'USER': 'postgres',
     #     'PASSWORD':'admin',
     #     'HOST':'localhost'
     # }
+
+# server
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'core',
+        'USER': 'romulus',
+        'PASSWORD':'admin',
+        'HOST':'localhost'
+    }
 
 }
 
