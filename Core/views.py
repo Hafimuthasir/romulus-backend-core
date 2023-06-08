@@ -33,7 +33,7 @@ class CompanyCred(APIView):
         return Response(status=status.HTTP_201_CREATED,data={'message':'Success','status':True})
     
     def get(self,request):
-        company = Company.objects.exclude(is_admin=True)
+        company = Company.objects.exclude(is_admin=True).exclude(user_type='staff')
         serializer = CompanySerializer(company,many=True)
         return Response(status=status.HTTP_200_OK,data=serializer.data)
     
