@@ -88,7 +88,7 @@ class CompanyLoginView(APIView):
             )
 
             res.data = str(refresh_token.access_token)
-            res["X-CSRFToken"] = csrf.get_token(request)
+            # res["X-CSRFToken"] = csrf.get_token(request)
             return res
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
