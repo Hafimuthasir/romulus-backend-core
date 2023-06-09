@@ -66,16 +66,16 @@ class CompanyLoginView(APIView):
             res.set_cookie(
             key='access_token',
             value=str(refresh_token.access_token),
-            # httponly=True,  
-            samesite='None',   
+            httponly=True,  
+            # samesite='None',   
             secure=True
             )
 
             res.set_cookie(
             key='refresh_token',
             value=str(refresh_token),
-            # httponly=True,
-            samesite='None',
+            httponly=True,
+            # samesite='None',
             secure=True
             )
             
