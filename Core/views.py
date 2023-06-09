@@ -68,7 +68,7 @@ class CompanyLoginView(APIView):
             value=str(refresh_token.access_token),
             # httponly=True,  
             samesite='None',   
-            # secure=True
+            secure=True
             )
 
             res.set_cookie(
@@ -76,7 +76,7 @@ class CompanyLoginView(APIView):
             value=str(refresh_token),
             # httponly=True,
             samesite='None',
-            # secure=True
+            secure=True
             )
             
             # csrf_token = csrf.get_token(request)
