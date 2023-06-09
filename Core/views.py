@@ -67,7 +67,7 @@ class CompanyLoginView(APIView):
             key='access_token',
             value=str(refresh_token.access_token),
             # httponly=True,  
-            # samesite='None',   
+            samesite='None',   
             # secure=True
             )
 
@@ -75,7 +75,7 @@ class CompanyLoginView(APIView):
             key='refresh_token',
             value=str(refresh_token),
             # httponly=True,
-            # samesite='None',
+            samesite='None',
             # secure=True
             )
             
