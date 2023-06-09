@@ -79,16 +79,16 @@ class CompanyLoginView(APIView):
             secure=True
             )
             
-            csrf_token = csrf.get_token(request)
-            res.set_cookie(
-                key='csrftoken',
-                value=csrf_token,
-                samesite='None',
-                secure=True
-            )
+            # csrf_token = csrf.get_token(request)
+            # res.set_cookie(
+            #     key='csrftoken',
+            #     value=csrf_token,
+            #     samesite='None',
+            #     secure=True
+            # )
 
             res.data = str(refresh_token.access_token)
-            # res["X-CSRFToken"] = csrf.get_token(request)
+            res["X-CSRFToken"] = csrf.get_token(request)
             return res
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
