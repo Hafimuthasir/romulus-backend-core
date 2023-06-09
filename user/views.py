@@ -123,12 +123,13 @@ class OrderHistoryAPIView(APIView):
 
     def get(self, request):
         order_status = request.query_params.get('order_status')
+        company_id = request.query_params.get('company_id')
         
 
         if order_status:
-            queryset = Order.objects.filter(order_status=order_status).order_by('-created_at')
+            queryset = Order.objects.filter(company=company_id,order_status=order_status).order_by('-created_at')
         else:
-            queryset = Order.objects.all().order_by('-created_at')
+            queryset = Order.objects.filter(company=company_id).order_by('-created_at')
 
         paginator = self.pagination_class()
         paginated_queryset = paginator.paginate_queryset(queryset, request)
