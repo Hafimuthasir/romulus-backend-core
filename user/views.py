@@ -13,6 +13,12 @@ from Core.serializers import CompanyLoginSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Sum
+from openpyxl import Workbook
+from django.http import HttpResponse
+import calendar
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
+
 
 
 
@@ -39,12 +45,12 @@ class AssetsAPIView(APIView):
         
 
     def delete(self,request,id):
-        try:
-            data = Assets.objects.get(id=id)
-            data.delete()
-            return Response(200)
-        except:
-            return Response('something went wrong',status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
+        # try:
+        data = Assets.objects.get(id=id)
+        data.delete()
+        return Response(200)
+        # except:
+        #     return Response('something went wrong',status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
     
 
 class StaffAPIView(APIView):
@@ -87,6 +93,7 @@ class OrderAPIView(APIView):
                 'company': order.company.id,
                 'payment_type': 'purchase',
                 'payment_price': order.total_price,
+                'order':order.id,
                 'payment_method': '',  # Add your payment method here
                 'created_month':timezone.now().strftime('%B')
             }
@@ -124,17 +131,18 @@ class OrderHistoryAPIView(APIView):
     def get(self, request):
         order_status = request.query_params.get('order_status')
         company_id = request.query_params.get('company_id')
+        order_type = request.query_params.get('order_type')
         
-
         if order_status:
-            queryset = Order.objects.filter(company=company_id,order_status=order_status).order_by('-created_at')
+            queryset = Order.objects.filter(company=company_id,order_type=order_type,order_status=order_status).order_by('-created_at')
         else:
-            queryset = Order.objects.filter(company=company_id).order_by('-created_at')
+            queryset = Order.objects.filter(company=company_id,order_type=order_type,).order_by('-created_at')
 
         paginator = self.pagination_class()
         paginated_queryset = paginator.paginate_queryset(queryset, request)
         serializer = OrderSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
+
 
 
 class TransactionsAPIView(APIView):
@@ -145,9 +153,8 @@ class TransactionsAPIView(APIView):
         payment_type = request.query_params.get('payment_type')
         company = request.query_params.get('company_id')
         
-
         if payment_type:
-            queryset = Payments.objects.filter(payment_type=payment_type,company=company).order_by('-created_at')
+            queryset = Payments.objects.filter(payment_type=payment_type, company=company).order_by('-created_at')
         else:
             queryset = Payments.objects.filter(company=company).order_by('-created_at')
 
@@ -159,7 +166,7 @@ class TransactionsAPIView(APIView):
 
 
 class DashboardView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny] 
     def get(self,request,id):
         try : 
             current_month = datetime.now().month
@@ -182,6 +189,64 @@ class DashboardView(APIView):
             return Response('Something went wrong',status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ExportOrdersView(APIView):
+    permission_classes = [AllowAny] 
+
+    def get(self, request):
+        # Query the orders data from the database
+        company_id = request.query_params.get('company_id')
+        filter_type = request.query_params.get('filter_type')
+        
+        
+        if filter_type == 'date_range':
+            from_date = request.query_params.get('from_date')
+            to_date = request.query_params.get('to_date')
+            from_date = timezone.make_aware(datetime.strptime(from_date, '%Y-%m-%d'))
+            to_date = timezone.make_aware(datetime.strptime(to_date, '%Y-%m-%d'))
+            orders = Order.objects.filter(company=company_id, created_at__range=[from_date, to_date])
+        else:
+            month = request.query_params.get('month')
+            month_number = list(calendar.month_name).index(month.capitalize())
+            orders = Order.objects.filter(company=company_id, created_at__month=month_number)
+
+        # Create a new Excel workbook and worksheet
+        wb = Workbook()
+        ws = wb.active
+
+        # Apply formatting to the headers
+        header_font = Font(bold=True)
+        for col_num, header in enumerate(['Order ID', 'Ordered By','User Type', 'Asset','Quantity', 'Total Price',  'Created At'], start=1):
+            col_letter = get_column_letter(col_num)
+            cell = ws['{}1'.format(col_letter)]
+            cell.value = header
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center')
+
+        # Apply formatting to the order data
+        for row_num, order in enumerate(orders, start=2):
+            ws.cell(row=row_num, column=1, value=order.id)
+            ws.cell(row=row_num, column=2, value=order.ordered_by.username)
+            ws.cell(row=row_num, column=3, value=order.ordered_user_type)
+            ws.cell(row=row_num, column=4, value=order.asset.assetName)
+            ws.cell(row=row_num, column=5, value=order.quantity)
+            ws.cell(row=row_num, column=6, value=order.total_price)
+            ws.cell(row=row_num, column=7, value=order.created_at.astimezone(timezone.utc).replace(tzinfo=None))
+
+        # Auto-size columns
+        for col_num in range(1, 8):
+            col_letter = get_column_letter(col_num)
+            ws.column_dimensions[col_letter].auto_size = True
+        
+        ws.column_dimensions['G'].width = 20
+
+        # Create the HTTP response with the Excel file content
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=orders.xlsx'
+
+        # Save the workbook to the response
+        wb.save(response)
+
+        return response
 
 
 

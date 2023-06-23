@@ -43,7 +43,7 @@ class Company(AbstractBaseUser):
     city = models.CharField(max_length=255)
     pin_code = models.CharField(max_length=10,blank=True)
     is_admin = models.BooleanField(default=False)
-    user_type = models.CharField(max_length=10,default='manager')
+    user_type = models.CharField(max_length=10, default='manager')
     number = models.CharField(max_length=12)
 
     monthly_purchase_cost = models.IntegerField(blank=True,null=True)
@@ -64,7 +64,7 @@ class Company(AbstractBaseUser):
     administrative_office = models.TextField(blank=True)
     other_office = models.TextField(blank=True)
     principle_place = models.TextField(blank=True)
-    adhaar_authenticated_status = models.BooleanField(default=False,blank=True)
+    adhaar_authenticated_status = models.CharField(max_length=50,default=False,blank=True)
     ekyc_status = models.CharField(max_length=100,blank=True)
     gstin = models.CharField(max_length=100)
     additional_trade_name = models.TextField(blank=True)
@@ -88,7 +88,7 @@ class Assets(models.Model):
     assetCapacity = models.IntegerField()
     staff_incharge = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='assets_incharge', blank=True,null=True)
     assetLocation = models.CharField(max_length=255,null=True)
-    assetName = models.CharField(max_length=255,null=True)
+    assetName = models.CharField(max_length=255,unique=True)
     assetPincode = models.IntegerField()
     assetRegistrationNumber = models.CharField(max_length=255,blank=True)
     assetState = models.CharField(max_length=255,blank=True)
@@ -112,12 +112,14 @@ class Order(models.Model):
     order_status = models.CharField(max_length=100,default='ordered')
     created_at = models.DateTimeField(auto_now=True)
     ordered_user_type = models.CharField(max_length=100)
+    order_type = models.CharField(max_length=100,default='client')
     # payment_status = models.CharField(default=True)
 
 
 class Payments(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE)
     payment_type = models.CharField(max_length=100) # paid purchase
+    order = models.ForeignKey(Order,on_delete=models.PROTECT)
     payment_price = models.IntegerField()
     created_at = models.DateTimeField(auto_now=True)
     created_month = models.CharField(max_length=100)

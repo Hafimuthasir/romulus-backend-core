@@ -14,7 +14,7 @@ class StaffSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password')
         validated_data['password'] = make_password(password)
-        validated_data['user_type'] = 'staff'
+        # validated_data['user_type'] = 'staff'
         staff = Company.objects.create(**validated_data)
         return staff
 
@@ -33,6 +33,10 @@ class GetStaffSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
+    ordered_by_name = serializers.CharField(source='ordered_by.username', read_only=True)
+    asset_name = serializers.CharField(source='asset.assetName',read_only=True)
+    asset_type = serializers.CharField(source='asset.typeOfAsset',read_only=True)
+    asset_reg = serializers.CharField(source='asset.assetRegistrationNumber',read_only=True)
     class Meta:
         model = Order
         fields = "__all__"

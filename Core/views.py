@@ -33,7 +33,7 @@ class CompanyCred(APIView):
         return Response(status=status.HTTP_201_CREATED,data={'message':'Success','status':True})
     
     def get(self,request):
-        company = Company.objects.exclude(is_admin=True).exclude(user_type='staff')
+        company = Company.objects.filter(user_type='company').exclude(is_admin=True)
         serializer = CompanySerializer(company,many=True)
         return Response(status=status.HTTP_200_OK,data=serializer.data)
     
@@ -44,11 +44,12 @@ class CompanyCred(APIView):
         company.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    
+
 
 class CompanyLoginView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
+        print('444444')
         serializer = CompanyLoginSerializer(data=request.data)
         if serializer.is_valid():
             company = serializer.validated_data['company']
@@ -67,7 +68,7 @@ class CompanyLoginView(APIView):
             key='access_token',
             value=str(refresh_token.access_token),
             httponly=True,  
-            # samesite='None',   
+            samesite='None',   
             secure=True
             )
 
@@ -75,17 +76,10 @@ class CompanyLoginView(APIView):
             key='refresh_token',
             value=str(refresh_token),
             httponly=True,
-            # samesite='None',
+            samesite='None',
             secure=True
             )
             
-            # csrf_token = csrf.get_token(request)
-            # res.set_cookie(
-            #     key='csrftoken',
-            #     value=csrf_token,
-            #     samesite='None',
-            #     secure=True
-            # )
 
             res.data = str(refresh_token.access_token)
             res["X-CSRFToken"] = csrf.get_token(request)
