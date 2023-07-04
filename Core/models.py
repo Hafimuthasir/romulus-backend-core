@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from datetime import datetime
+from django.utils import timezone
+import pytz
 
 class CompanyManager(BaseUserManager):
 
@@ -37,13 +39,13 @@ class CompanyManager(BaseUserManager):
         return user
 
 
-class Company(AbstractBaseUser):
+class User(AbstractBaseUser):
     username = models.CharField(max_length=255,unique=True)
     email = models.EmailField(blank=True)
     city = models.CharField(max_length=255)
     pin_code = models.CharField(max_length=10,blank=True)
     is_admin = models.BooleanField(default=False)
-    user_type = models.CharField(max_length=10, default='manager')
+    role = models.CharField(max_length=10, default='manager')
     number = models.CharField(max_length=12)
 
     monthly_purchase_cost = models.IntegerField(blank=True,null=True)
@@ -51,6 +53,7 @@ class Company(AbstractBaseUser):
     total_outstanding = models.IntegerField(blank=True,null=True)
     total_purchase_cost = models.IntegerField(blank=True,null=True)
     total_purchase_quantity = models.IntegerField(blank=True,null=True)
+    is_active = models.BooleanField(default=True)
 
     #staff additional information
     company_id = models.IntegerField(blank=True,null=True)
@@ -73,6 +76,10 @@ class Company(AbstractBaseUser):
 
     objects = CompanyManager()
 
+    def delete(self, *args, **kwargs):
+        self.is_active = False  
+        self.save()
+
     def __str__(self):
         return self.username
 
@@ -82,29 +89,34 @@ class Company(AbstractBaseUser):
     def has_perm(self, perm, obj=None):
         return True
     
+class AssetLocations(models.Model):
+    company = models.ForeignKey(User,on_delete=models.CASCADE)
+    location = models.TextField(blank=True)    
 
 class Assets(models.Model):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE)
+    company = models.ForeignKey(User, on_delete=models.CASCADE)
     assetCapacity = models.IntegerField()
-    staff_incharge = models.ForeignKey(Company,on_delete=models.CASCADE, related_name='assets_incharge', blank=True,null=True)
-    assetLocation = models.CharField(max_length=255,null=True)
+    staff_incharge = models.ForeignKey(User,on_delete=models.CASCADE, related_name='assets_incharge', blank=True,null=True)
+    assetLocation = models.ForeignKey(AssetLocations,on_delete=models.CASCADE, blank=True,null=True)
     assetName = models.CharField(max_length=255,unique=True)
     assetPincode = models.IntegerField()
     assetRegistrationNumber = models.CharField(max_length=255,blank=True)
     assetState = models.CharField(max_length=255,blank=True)
     fuelType = models.CharField(max_length=255,default='Diesel',blank=True)
     typeOfAsset = models.CharField(max_length=255,null=True)
+    is_active = models.BooleanField(default=True)
 
-class AssetLocations(models.Model):
-    company = models.ForeignKey(Company,on_delete=models.CASCADE)
-    location = models.TextField(blank=True)
-    location2 = models.TextField(blank=True)
-    location3 = models.TextField(blank=True)
+    def delete(self, *args, **kwargs):
+        self.is_active = False  # Disable the company instead of deleting
+        self.save()
+
+
+
 
 
 class Order(models.Model):
-    company = models.ForeignKey(Company,on_delete=models.CASCADE)
-    ordered_by = models.ForeignKey(Company,on_delete=models.CASCADE,related_name='ordered_user')
+    company = models.ForeignKey(User,on_delete=models.CASCADE)
+    ordered_by = models.ForeignKey(User,on_delete=models.CASCADE,related_name='ordered_user')
     quantity = models.IntegerField()
     asset = models.ForeignKey(Assets,on_delete=models.CASCADE)
     diesel_price = models.FloatField()
@@ -113,11 +125,17 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now=True)
     ordered_user_type = models.CharField(max_length=100)
     order_type = models.CharField(max_length=100,default='client')
+
+    # def save(self, *args, **kwargs):
+    #     if not self.id:
+    #         tz = pytz.timezone('Asia/Kolkata')
+    #         self.created_at = timezone.localtime(timezone.now(), tz)
+    #     super().save(*args, **kwargs)
     # payment_status = models.CharField(default=True)
 
 
 class Payments(models.Model):
-    company = models.ForeignKey(Company,on_delete=models.CASCADE)
+    company = models.ForeignKey(User,on_delete=models.CASCADE)
     payment_type = models.CharField(max_length=100) # paid purchase
     order = models.ForeignKey(Order,on_delete=models.PROTECT)
     payment_price = models.IntegerField()
@@ -125,6 +143,9 @@ class Payments(models.Model):
     created_month = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100,blank=True)
     transaction_id = models.CharField(max_length=100,blank=True)
+    is_active = models.BooleanField(default=False)
 
 
-
+    def delete(self, *args, **kwargs):
+        self.is_active = False 
+        self.save()

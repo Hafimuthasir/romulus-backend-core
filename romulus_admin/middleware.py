@@ -18,7 +18,9 @@ class CookieJWTMiddleware:
                 payload = jwt_auth.get_validated_token(access_token)
                 user = jwt_auth.get_user(payload)
                 if not user.is_authenticated:
+                    
                     raise exceptions.AuthenticationFailed('User not authenticated.')
+                    
                 request.META['HTTP_AUTHORIZATION'] = f'Bearer {access_token}'
             except exceptions.AuthenticationFailed:
                 refresh_token = request.COOKIES.get('refresh_token')
@@ -39,6 +41,6 @@ class CookieJWTMiddleware:
                         return response
                     except (User.DoesNotExist, exceptions.AuthenticationFailed):
                         pass
-
+        
         response = self.get_response(request)
         return response

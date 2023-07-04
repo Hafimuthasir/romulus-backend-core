@@ -131,10 +131,13 @@ DATABASES = {
 
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'rm3',
+        'NAME': 'rm4',
         'USER': 'postgres',
         'PASSWORD':'admin',
-        'HOST':'localhost'
+        'HOST':'localhost',
+        'OPTIONS': {
+            'options': '-c timezone=Asia/Kolkata',  # Set the timezone for the database connection
+        }
     }
 
 # server
@@ -167,14 +170,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = 'Core.Company'
+AUTH_USER_MODEL = 'Core.User'
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 

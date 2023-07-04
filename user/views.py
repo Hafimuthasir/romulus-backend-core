@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from Core.models import Assets,Company
+from Core.models import Assets,User
 from .serializers import *
 from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 from django.utils import timezone
@@ -18,6 +18,7 @@ from django.http import HttpResponse
 import calendar
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
+from django.shortcuts import get_object_or_404
 
 
 
@@ -36,28 +37,40 @@ class AssetsAPIView(APIView):
     
     def get(self,request,id):
         try:
-            data = Assets.objects.filter(company_id=id)
-            print(data)
+            data = Assets.objects.filter(company_id=id,is_active=True).order_by('-id')
             serializer=AssetsSerializer(data,many=True)
             return Response(serializer.data)
         except:
             return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,data={'message':'Something Went Wrong','status':False})
         
+    def put(self, request, id):
+        try:
+            asset = Assets.objects.get(id=id)
+            serializer = AssetsSerializer(asset, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status=status.HTTP_200_OK, data={'message': 'Success', 'status': True})
+            else:
+                return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': serializer.errors, 'status': False})
+        except Assets.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'Asset not found', 'status': False})
+        except:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data={'message': 'Something Went Wrong', 'status': False})
+
+        
 
     def delete(self,request,id):
-        # try:
         data = Assets.objects.get(id=id)
         data.delete()
         return Response(200)
-        # except:
-        #     return Response('something went wrong',status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
-    
+ 
 
 class StaffAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = StaffSerializer(data=request.data)
+        print(request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({'message': 'Staff added successfully'})
@@ -65,9 +78,35 @@ class StaffAPIView(APIView):
 
 
     def get(self, request, id):
-        staff_members = Company.objects.filter(company_id=id)
+        staff_only = request.query_params.get('staff_only')
+        if staff_only :
+            staff_members = User.objects.filter(company_id=id,role='staff',is_active=True).order_by('username')
+        else:
+            staff_members = User.objects.filter(company_id=id,is_active=True).order_by('username')
         serializer = GetStaffSerializer(staff_members, many=True)
         return Response(serializer.data)
+    
+    def put(self, request, id):
+        user = get_object_or_404(User, pk=id)
+        serializer = StaffSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Staff updated successfully'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, id):
+        instance = get_object_or_404(User, id=id)
+        password = request.data.get('password')
+        if password:
+            instance.password = make_password(password)
+            instance.save()
+            return Response({'message': 'Password changed successfully'})
+        return Response({'message': 'No password provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id):
+        user = User.objects.get(id=id)
+        user.delete()
+        return Response({'Deleted Sucessfully'},status=status.HTTP_200_OK)
     
 
 # class OrderAPIView(APIView):
@@ -87,33 +126,33 @@ class OrderAPIView(APIView):
         serializer = OrderSerializer(data=request.data)
         if serializer.is_valid():
             order = serializer.save()
-
-            # Create payment entry
-            payment_data = {
-                'company': order.company.id,
-                'payment_type': 'purchase',
-                'payment_price': order.total_price,
-                'order':order.id,
-                'payment_method': '',  # Add your payment method here
-                'created_month':timezone.now().strftime('%B')
-            }
+            return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
+            # # Create payment entry
+            # payment_data = {
+            #     'company': order.company.id,
+            #     'payment_type': 'purchase',
+            #     'payment_price': order.total_price,
+            #     'order':order.id,
+            #     'payment_method': '',  # Add your payment method here
+            #     'created_month':timezone.now().strftime('%B')
+            # }
             
-            payment_serializer = PaymentSerializer(data=payment_data)
-            company = order.company
-            company.total_outstanding = (company.total_outstanding or 0) + order.total_price
-            company.total_purchase_cost =  (company.total_purchase_cost or 0) + order.total_price
-            company.total_purchase_quantity = (company.total_purchase_quantity or 0) + order.quantity
-            company.save()
+            # payment_serializer = PaymentSerializer(data=payment_data)
+            # company = order.company
+            # company.total_outstanding = (company.total_outstanding or 0) + order.total_price
+            # company.total_purchase_cost =  (company.total_purchase_cost or 0) + order.total_price
+            # company.total_purchase_quantity = (company.total_purchase_quantity or 0) + order.quantity
+            # company.save()
 
-            print(company.total_outstanding)
-            if payment_serializer.is_valid():
-                with transaction.atomic():
-                    payment_serializer.save()
-                    return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
-            else:
-                order.delete()
-                print(payment_serializer.errors)
-                return Response(payment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # print(company.total_outstanding)
+            # if payment_serializer.is_valid():
+            #     with transaction.atomic():
+            #         payment_serializer.save()
+            #         return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
+            # else:
+            #     order.delete()
+            #     print(payment_serializer.errors)
+            #     return Response(payment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -172,10 +211,10 @@ class DashboardView(APIView):
             current_month = datetime.now().month
             current_year = datetime.now().year
 
-            total_price = Order.objects.filter(company=id,created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
-            total_quantity = Order.objects.filter(company=id,created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
+            total_price = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
+            total_quantity = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
 
-            company_obj = Company.objects.get(id=id)
+            company_obj = User.objects.get(id=id)
 
             dashboard_data = {
                 'monthly_purchase_cost' : total_price,
@@ -301,13 +340,21 @@ class CheckAuthView(APIView):
 
     def get(self, request):
         user = request.user
+        if user.role != 'company':
+            try:
+                company_name = User.objects.get(id=user.company_id).username
+            except:
+                company_name = 'Unknown'
+        else:
+            company_name = user.username
         response_data = {
             'message': 'Authentication successful',
             'user': {
                 'id': user.id,
                 'username': user.username,
-                'user_type': user.user_type,
-                'company_id':user.company_id
+                'user_type': user.role,
+                'company_id':user.company_id,
+                'company_name':company_name
                 # Include any other user information you need
             }
         }
@@ -321,7 +368,7 @@ class CheckAuthView(APIView):
 
 class PopulateOrder(APIView):
     def get(self,request):
-        company = Company.objects.get(id=34)
+        company = User.objects.get(id=34)
         asset = Assets.objects.get(id=20)
         for i in range(50):
             order = Order.objects.create(

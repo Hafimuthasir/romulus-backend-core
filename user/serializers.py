@@ -8,23 +8,27 @@ class StaffSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=128, write_only=True)
 
     class Meta:
-        model = Company
-        fields = ['username', 'number', 'password', 'company_id']
+        model = User
+        fields = ['username', 'number', 'password', 'company_id', 'role']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
         validated_data['password'] = make_password(password)
         # validated_data['user_type'] = 'staff'
-        staff = Company.objects.create(**validated_data)
+        staff = User.objects.create(**validated_data)
         return staff
+    
+    def update(self, instance, validated_data):
+        validated_data.pop('password', None)
+        return super().update(instance, validated_data)
 
 
 class GetStaffSerializer(serializers.ModelSerializer):
     assets_incharge = serializers.SerializerMethodField()
 
     class Meta:
-        model = Company
-        fields = ['id', 'username', 'assets_incharge', 'number']
+        model = User
+        fields = ['id', 'username', 'assets_incharge', 'number', 'role']
 
     def get_assets_incharge(self, obj):
         assets = obj.assets_incharge.all()
