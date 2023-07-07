@@ -22,23 +22,38 @@ from django.db import transaction
 from user.serializers import OrderSerializer
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
+from rest_framework.permissions import BasePermission
+from romulus_admin.common_views import *
+from romulus_admin.custom_permissions import IsAdmin
+
 # Create your views here.
 
 class CompanyCred(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
     def post(self,request):
-        serializer = CompanySerializer(data=request.data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-        else:
-            return Response(status=status.HTTP_406_NOT_ACCEPTABLE,data={'message':serializer.errors,'status':False})
-        return Response(status=status.HTTP_201_CREATED,data={'message':'Success','status':True})
+            user = serializer.save()
+            request.data['company'] = user.id
+            # print('bbbb',request.data)
+            info_serializer = CompanyInfoSerializer(data=request.data)            
+            if info_serializer.is_valid():
+                info_serializer.save()
+                return Response(status=status.HTTP_201_CREATED,data={'message':'Success','status':True})
+            user.permanent_delete()           
+            return Response(status=status.HTTP_406_NOT_ACCEPTABLE,data={'message':info_serializer.errors,'status':False})
+        print(serializer.errors)
+        return Response(status=status.HTTP_406_NOT_ACCEPTABLE,data={'message':serializer.errors,'status':False})
+        # else:
+        #     return Response(status=status.HTTP_406_NOT_ACCEPTABLE,data={'message':serializer.errors,'status':False})
+        
     
     def get(self,request):
         company = User.objects.filter(role='company').exclude(is_admin=True).exclude(is_active=False)
-        serializer = CompanySerializer(company,many=True)
+        serializer = GetCompanySerializer(company,many=True)
         return Response(status=status.HTTP_200_OK,data=serializer.data)
     
+
     @csrf_exempt
     def delete(self, request, pk):
         print(pk)
@@ -117,10 +132,25 @@ class CompanyLogoutView(APIView):
         
         return res
     
+# class IsAdmin(BasePermission):
+#     def has_permission(self, request, view):
+#         authorization_header = request.META['HTTP_AUTHORIZATION']
+        
+#         if authorization_header:
+#             token_type, access_token = authorization_header.split()
 
+#             jwt_auth = JWTAuthentication()     
+#             payload = jwt_auth.get_validated_token(access_token)
+#             user = jwt_auth.get_user(payload)  
+#             if user.is_authenticated:
+#                 if user.is_admin:
+#                     return True
+    
+        # return False 
+    
 class CheckAuthView(APIView):
-    authentication_classes = [JWTAuthentication]    
-    permission_classes = [IsAuthenticated]
+    # authentication_classes = [JWTAuthentication]    
+    permission_classes = [IsAdmin]
    
     # permission_classes = [AllowAny]
 
@@ -192,7 +222,7 @@ class MyPaginator(PageNumberPagination):
 
 class AllOrdersHistory(APIView):
     pagination_class = MyPaginator
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdmin]
 
     def get(self, request):
         order_status = request.query_params.get('order_status')
@@ -250,6 +280,52 @@ class OrderStatus(APIView):
                 company.total_purchase_quantity = (company.total_purchase_quantity or 0) + order.quantity
                 company.save()
         return Response(200)
+    
+
+class FuelPriceChange(APIView):
+    def put(self,request):
+        print('hai',request.data)
+        change_type = request.data['change_type']
+        if change_type == 'diesel':
+            
+            new_price = request.data['diesel_Price']
+            company_id = request.data['company_id']
+            try :
+                instance = CompanyInfo.objects.get(company_id = company_id)
+                instance.diesel_price = new_price
+                instance.save()
+                return Response(data='Diesel Price Updated Successfully', status=status.HTTP_200_OK)
+            except :
+                return Response(400)
+            
+        if change_type == 'discount':
+            new_price = request.data['discount_price']
+            company_id = request.data['company_id']
+            try :
+                instance = CompanyInfo.objects.get(company_id = company_id)
+                instance.discount_price = new_price
+                instance.save()
+                return Response(data='Discount Price Updated Successfully', status=status.HTTP_200_OK)
+            except :
+                return Response(400)
+        return Response(400)
+            
+
+
+class OrderHistoryAdmin(OrderHistoryCommonView):
+    permission_classes = [IsAdmin]
+
+
+class AssetsView(AssetsCommonView):
+    permission_classes = [IsAdmin]
+
+class OrderView(OrderCommonView):
+    permission_classes = [IsAdmin]
+
+class TransactionsView(TransactionsCommonView):
+    permission_classes = [IsAdmin]
+
+
     
 
 class SampleGet(APIView):

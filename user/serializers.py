@@ -37,6 +37,8 @@ class GetStaffSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
+    discount_price = serializers.FloatField(required=False)
+    saved_amount = serializers.FloatField(required=False)
     ordered_by_name = serializers.CharField(source='ordered_by.username', read_only=True)
     asset_name = serializers.CharField(source='asset.assetName',read_only=True)
     asset_type = serializers.CharField(source='asset.typeOfAsset',read_only=True)

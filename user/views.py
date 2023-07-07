@@ -19,50 +19,18 @@ import calendar
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils import get_column_letter
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import BasePermission
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from romulus_admin.custom_permissions import IsAdmin,IsUser
 
-
+from romulus_admin.common_views import *
 
 
 
 # Create your views here.
-class AssetsAPIView(APIView):
-    permission_classes = [AllowAny]
-    def post(self,request):
-        serializer = AssetsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-        else:
-            return Response(status=status.HTTP_406_NOT_ACCEPTABLE,data={'message':serializer.errors,'status':False})
-        return Response(status=status.HTTP_201_CREATED,data={'message':'Success','status':True})
+class AssetsView(AssetsCommonView):
+    permission_classes = [IsUser]
     
-    def get(self,request,id):
-        try:
-            data = Assets.objects.filter(company_id=id,is_active=True).order_by('-id')
-            serializer=AssetsSerializer(data,many=True)
-            return Response(serializer.data)
-        except:
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,data={'message':'Something Went Wrong','status':False})
-        
-    def put(self, request, id):
-        try:
-            asset = Assets.objects.get(id=id)
-            serializer = AssetsSerializer(asset, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(status=status.HTTP_200_OK, data={'message': 'Success', 'status': True})
-            else:
-                return Response(status=status.HTTP_406_NOT_ACCEPTABLE, data={'message': serializer.errors, 'status': False})
-        except Assets.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND, data={'message': 'Asset not found', 'status': False})
-        except:
-            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR, data={'message': 'Something Went Wrong', 'status': False})
-
-        
-
-    def delete(self,request,id):
-        data = Assets.objects.get(id=id)
-        data.delete()
-        return Response(200)
  
 
 class StaffAPIView(APIView):
@@ -119,42 +87,9 @@ class StaffAPIView(APIView):
 #             return Response({'message': 'Order placed successfully'})
 
 
-class OrderAPIView(APIView):
-    permission_classes = [AllowAny]
+class OrderView(OrderCommonView):
+    permission_classes = [IsUser]
 
-    def post(self, request):
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            order = serializer.save()
-            return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
-            # # Create payment entry
-            # payment_data = {
-            #     'company': order.company.id,
-            #     'payment_type': 'purchase',
-            #     'payment_price': order.total_price,
-            #     'order':order.id,
-            #     'payment_method': '',  # Add your payment method here
-            #     'created_month':timezone.now().strftime('%B')
-            # }
-            
-            # payment_serializer = PaymentSerializer(data=payment_data)
-            # company = order.company
-            # company.total_outstanding = (company.total_outstanding or 0) + order.total_price
-            # company.total_purchase_cost =  (company.total_purchase_cost or 0) + order.total_price
-            # company.total_purchase_quantity = (company.total_purchase_quantity or 0) + order.quantity
-            # company.save()
-
-            # print(company.total_outstanding)
-            # if payment_serializer.is_valid():
-            #     with transaction.atomic():
-            #         payment_serializer.save()
-            #         return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
-            # else:
-            #     order.delete()
-            #     print(payment_serializer.errors)
-            #     return Response(payment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        print(serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MyPaginator(PageNumberPagination):
@@ -163,49 +98,20 @@ class MyPaginator(PageNumberPagination):
     max_page_size = 100
 
 
-class OrderHistoryAPIView(APIView):
-    pagination_class = MyPaginator
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        order_status = request.query_params.get('order_status')
-        company_id = request.query_params.get('company_id')
-        order_type = request.query_params.get('order_type')
-        
-        if order_status:
-            queryset = Order.objects.filter(company=company_id,order_type=order_type,order_status=order_status).order_by('-created_at')
-        else:
-            queryset = Order.objects.filter(company=company_id,order_type=order_type,).order_by('-created_at')
-
-        paginator = self.pagination_class()
-        paginated_queryset = paginator.paginate_queryset(queryset, request)
-        serializer = OrderSerializer(paginated_queryset, many=True)
-        return paginator.get_paginated_response(serializer.data)
+class OrderHistoryAPIView(OrderHistoryCommonView):
+    permission_classes = [IsUser]
 
 
 
-class TransactionsAPIView(APIView):
-    pagination_class = MyPaginator
-    permission_classes = [AllowAny]
 
-    def get(self, request):
-        payment_type = request.query_params.get('payment_type')
-        company = request.query_params.get('company_id')
-        
-        if payment_type:
-            queryset = Payments.objects.filter(payment_type=payment_type, company=company).order_by('-created_at')
-        else:
-            queryset = Payments.objects.filter(company=company).order_by('-created_at')
+class TransactionsView(TransactionsCommonView):
+    permission_classes = [IsUser]
 
-        paginator = self.pagination_class()
-        paginated_queryset = paginator.paginate_queryset(queryset, request)
-        serializer = PaymentSerializer(paginated_queryset, many=True)
-        
-        return paginator.get_paginated_response(serializer.data)
+    
 
 
 class DashboardView(APIView):
-    permission_classes = [AllowAny] 
+    permission_classes = [IsUser]
     def get(self,request,id):
         try : 
             current_month = datetime.now().month
@@ -333,13 +239,12 @@ class ExportOrdersView(APIView):
 
 
 class CheckAuthView(APIView):
-    authentication_classes = [JWTAuthentication]    
-    permission_classes = [IsAuthenticated]
+ 
+    permission_classes = [IsUser]
    
-    # permission_classes = [AllowAny]
-
     def get(self, request):
         user = request.user
+        print('fff',request.user)
         if user.role != 'company':
             try:
                 company_name = User.objects.get(id=user.company_id).username

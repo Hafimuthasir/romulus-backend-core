@@ -42,35 +42,14 @@ class CompanyManager(BaseUserManager):
 class User(AbstractBaseUser):
     username = models.CharField(max_length=255,unique=True)
     email = models.EmailField(blank=True)
-    city = models.CharField(max_length=255)
-    pin_code = models.CharField(max_length=10,blank=True)
     is_admin = models.BooleanField(default=False)
     role = models.CharField(max_length=10, default='manager')
     number = models.CharField(max_length=12)
-
-    monthly_purchase_cost = models.IntegerField(blank=True,null=True)
-    monthly_purchase_quantity = models.IntegerField(blank=True,null=True)
-    total_outstanding = models.IntegerField(blank=True,null=True)
-    total_purchase_cost = models.IntegerField(blank=True,null=True)
-    total_purchase_quantity = models.IntegerField(blank=True,null=True)
     is_active = models.BooleanField(default=True)
 
     #staff additional information
-    company_id = models.IntegerField(blank=True,null=True)
+    company_id = models.ForeignKey('self', blank=True, null=True, on_delete=models.DO_NOTHING)
 
-    legal_name = models.CharField(max_length=255)
-    trade_name = models.CharField(max_length=255,blank=True)
-    effective_date_of_registration = models.DateField(auto_now=False,null=True)
-    constitution_of_bussiness = models.CharField(max_length=100,blank=True)
-    gstin_uin_status = models.CharField(max_length=100,blank=True)
-    taxpayer_type = models.CharField(max_length=100,blank=True)
-    administrative_office = models.TextField(blank=True)
-    other_office = models.TextField(blank=True)
-    principle_place = models.TextField(blank=True)
-    adhaar_authenticated_status = models.CharField(max_length=50,default=False,blank=True)
-    ekyc_status = models.CharField(max_length=100,blank=True)
-    gstin = models.CharField(max_length=100)
-    additional_trade_name = models.TextField(blank=True)
 
     USERNAME_FIELD = 'username'
 
@@ -79,6 +58,9 @@ class User(AbstractBaseUser):
     def delete(self, *args, **kwargs):
         self.is_active = False  
         self.save()
+
+    def permanent_delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return self.username
@@ -89,6 +71,25 @@ class User(AbstractBaseUser):
     def has_perm(self, perm, obj=None):
         return True
     
+
+class CompanyInfo(models.Model):
+    company = models.OneToOneField(User, on_delete=models.CASCADE)
+    trade_name = models.CharField(max_length=255, blank=True)
+    administrative_office = models.TextField(blank=True)
+    other_office = models.TextField(blank=True)
+    gstin = models.CharField(max_length=100)
+    monthly_purchase_cost = models.IntegerField(blank=True, null=True)
+    monthly_purchase_quantity = models.IntegerField(blank=True, null=True)
+    total_outstanding = models.IntegerField(blank=True, null=True)
+    total_purchase_cost = models.IntegerField(blank=True, null=True)
+    total_purchase_quantity = models.IntegerField(blank=True, null=True)
+    city = models.CharField(max_length=255)
+    pin_code = models.CharField(max_length=10, blank=True)
+    diesel_price = models.FloatField(null=True)
+    discount_price = models.FloatField(null=True)
+
+
+
 class AssetLocations(models.Model):
     company = models.ForeignKey(User,on_delete=models.CASCADE)
     location = models.TextField(blank=True)    
@@ -125,7 +126,8 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now=True)
     ordered_user_type = models.CharField(max_length=100)
     order_type = models.CharField(max_length=100,default='client')
-
+    discount_price = models.FloatField(null=True)
+    saved_amount = models.FloatField(null=True)
     # def save(self, *args, **kwargs):
     #     if not self.id:
     #         tz = pytz.timezone('Asia/Kolkata')

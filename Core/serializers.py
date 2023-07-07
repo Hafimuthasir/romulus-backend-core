@@ -5,22 +5,62 @@ from django.utils.dateformat import format
 import pytz
 from .models import *
 
-class CompanySerializer(serializers.ModelSerializer):
+class CompanyInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyInfo
+        fields = (
+            'trade_name', 'administrative_office', 'other_office', 'gstin',
+            'monthly_purchase_cost', 'monthly_purchase_quantity', 'total_outstanding',
+            'total_purchase_cost', 'total_purchase_quantity', 'city', 'pin_code'
+        )
+
+class CompanyInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanyInfo
+        fields = '__all__'
+        # fields = (
+        #     'trade_name', 'administrative_office', 'other_office', 'gstin',
+        #     'monthly_purchase_cost', 'monthly_purchase_quantity', 'total_outstanding',
+        #     'total_purchase_cost', 'total_purchase_quantity', 'city', 'pin_code'
+        # )
+
+
+class UserSerializer(serializers.ModelSerializer):
+    company_info = CompanyInfoSerializer(required=False)
     password = serializers.CharField(write_only=True, required=True, style={'input_type': 'password'})
 
     class Meta:
         model = User
-        fields = '__all__'
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ('id','username', 'email', 'role', 'number', 'password', 'company_info')
 
     def create(self, validated_data):
-        validated_data['password'] = make_password(validated_data.get('password'))
-        return super().create(validated_data)
+        # company_info_data = validated_data.pop('company_info', {})
+        password = validated_data.pop('password')
+        user = User.objects.create(**validated_data)
+        user.set_password(password)
+        user.save()
 
-    def update(self, instance, validated_data):
-        if 'password' in validated_data:
-            validated_data['password'] = make_password(validated_data.get('password'))
-        return super().update(instance, validated_data)
+        return user
+
+
+class GetCompanySerializer(serializers.ModelSerializer):
+    company_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id','username', 'email', 'number', 'is_active', 'company_info']
+
+    def get_company_info(self, obj):
+        try:
+            info = CompanyInfo.objects.get(company_id=obj.id)
+            return CompanyInfoSerializer(info).data
+        except CompanyInfo.DoesNotExist:
+            return None
+
+        
+
+
+
     
 
 
