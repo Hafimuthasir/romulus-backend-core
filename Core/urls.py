@@ -14,6 +14,7 @@ urlpatterns = [
     path('all-orders',AllOrdersHistory.as_view()),
     path('change-orderstatus/<id>',OrderStatus.as_view()),
     path('fuel-price', FuelPriceChange.as_view()),
+    path('get-diesel-price/<id>',GetDieselPrice.as_view()),
     path('order-history/', OrderHistoryAdmin.as_view()),
     path('assets', AssetsView.as_view()),
     path('assets/<int:id>', AssetsView.as_view()),

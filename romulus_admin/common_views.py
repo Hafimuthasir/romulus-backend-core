@@ -77,7 +77,7 @@ class OrderCommonView(APIView):
     def post(self, request):
         
         company_info = CompanyInfo.objects.get(company_id=request.data['company'])
-        saved_amount = request.data['quantity'] * company_info.discount_price
+        saved_amount = float(request.data['quantity']) * float(company_info.discount_price)
         request.data['discount_price'] = company_info.discount_price
         request.data['saved_amount'] = saved_amount
         serializer = OrderSerializer(data=request.data)  
@@ -88,6 +88,7 @@ class OrderCommonView(APIView):
                 saved_amount = order.quantity * company_info.discount_price
                 order.discount_price = company_info.discount_price
                 order.saved_amount = saved_amount
+                order.total_price = order.total_price - saved_amount
                 order.save()
                 return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
             except:
@@ -143,3 +144,16 @@ class TransactionsCommonView(APIView):
         serializer = PaymentSerializer(paginated_queryset, many=True)
         
         return paginator.get_paginated_response(serializer.data)
+    
+
+class GetDieselPrice(APIView):
+    
+    def get(self, request, id):
+        try :
+            instance = CompanyInfo.objects.get(company_id = id)
+            data = {'diesel_price':instance.diesel_price,'discount':instance.discount_price}
+
+            return Response(data,status=200)
+        except:
+            return Response(500)
+    

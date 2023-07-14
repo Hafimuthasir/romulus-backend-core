@@ -325,7 +325,8 @@ class OrderView(OrderCommonView):
 class TransactionsView(TransactionsCommonView):
     permission_classes = [IsAdmin]
 
-
+class GetDieselPrice(GetDieselPrice):
+    permission_classes = [IsAdmin]
     
 
 class SampleGet(APIView):
