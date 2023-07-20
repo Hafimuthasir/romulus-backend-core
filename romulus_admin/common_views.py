@@ -5,6 +5,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 from rest_framework import status
+from django.core.mail import send_mail
+from django.conf import settings
+import traceback
 
 class MyPaginator(PageNumberPagination):
     page_size = 12
@@ -74,9 +77,27 @@ class AssetsCommonView(APIView):
 
 class OrderCommonView(APIView):
 
-    def post(self, request):
-        
+    def post(self, request): 
+        print(request.data)
         company_info = CompanyInfo.objects.get(company_id=request.data['company'])
+        
+        if request.data['diesel_price'] != company_info.diesel_price or request.data['discount_price'] != company_info.discount_price:
+            return Response({'message':'Diesel Price Has Been Updated...Refreshing Page'},status=status.HTTP_409_CONFLICT)
+        
+        
+        if not request.data['bypass_totalizer']:
+            asset = Assets.objects.get(id=request.data['asset'])
+            last_totalizer = asset.totalizerreadings_set.last()
+            print(last_totalizer)
+            if last_totalizer:
+                ist_tz = pytz.timezone('Asia/Kolkata')
+                ist_created_at = last_totalizer.created_at.astimezone(ist_tz).date()
+                today = timezone.now().astimezone(ist_tz).date()
+                if ist_created_at != today:
+                    print('looop')
+                    return Response({'message':'Totalizer Is Not Updated Today'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
         saved_amount = float(request.data['quantity']) * float(company_info.discount_price)
         request.data['discount_price'] = company_info.discount_price
         request.data['saved_amount'] = saved_amount
@@ -88,8 +109,22 @@ class OrderCommonView(APIView):
                 saved_amount = order.quantity * company_info.discount_price
                 order.discount_price = company_info.discount_price
                 order.saved_amount = saved_amount
-                order.total_price = order.total_price - saved_amount
+                order.total_price = order.total_price
                 order.save()
+
+                try:
+                    subject = 'Romulus Order Update !!'
+                    recipient_email = 'muthasirhafi@gmail.com'
+                    orders_url = 'http://localhost:3000/orders'
+                    message = f"New order with ID {order.id} has been placed by company '{order.company.username}'. You can view your orders here: {orders_url}"
+
+                    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient_email])
+
+                    # return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
+                except Exception as e:
+                        traceback.print_exc() 
+
+
                 return Response({'message': 'Order placed successfully'}, status=status.HTTP_201_CREATED)
             except:
                 order.delete()

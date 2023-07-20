@@ -3,6 +3,7 @@ from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.dateformat import format
 import pytz
+from django.db.models import Sum
 from .models import *
 
 class CompanyInfoSerializer(serializers.ModelSerializer):
@@ -51,12 +52,20 @@ class GetCompanySerializer(serializers.ModelSerializer):
         fields = ['id','username', 'email', 'number', 'is_active', 'company_info']
 
     def get_company_info(self, obj):
+        current_month = datetime.now().month
+        current_year = datetime.now().year
         try:
             info = CompanyInfo.objects.get(company_id=obj.id)
-            return CompanyInfoSerializer(info).data
+            total_price = Order.objects.filter(company=obj.id, order_status='Delivered', created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
+            total_quantity = Order.objects.filter(company=obj.id, order_status='Delivered', created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
+
+            company_info_data = CompanyInfoSerializer(info).data
+            company_info_data['monthly_purchase_cost'] = total_price if total_price is not None else 0
+            company_info_data['monthly_purchase_quantity'] = total_quantity if total_quantity is not None else 0
+
+            return company_info_data
         except CompanyInfo.DoesNotExist:
             return None
-
         
 
 
@@ -81,10 +90,13 @@ class CompanyLoginSerializer(serializers.Serializer):
 
         # if not company.is_admin:
         #     raise serializers.ValidationError('Invalid credentials')
-        
+
         if user.check_password(password):
+            if not user.is_active:
+                print('ddd')
+                raise serializers.ValidationError('Your Company has blocked or deleted')
             if user.company_id is not None:
-                company = User.objects.get(id=user.company_id)
+                company = User.objects.get(id=user.company_id_id)
                 
                 if company.is_active:
                     attrs['company'] = user
@@ -104,6 +116,8 @@ class AssetsSerializer(serializers.ModelSerializer):
     staff_incharge_name = serializers.CharField(source='staff_incharge.username', read_only=True)
     last_order_date = serializers.SerializerMethodField(read_only=True)
     location_name = serializers.CharField(source='assetLocation.location',read_only=True)
+    last_totalizer_updated = serializers.SerializerMethodField(read_only=True)
+    is_totalizer_updated = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Assets
         fields = '__all__'
@@ -124,9 +138,34 @@ class AssetsSerializer(serializers.ModelSerializer):
             # return last_order.created_at
         
         return None
+    
+    def get_last_totalizer_updated(self, asset):
+        last_totalizer = asset.totalizerreadings_set.last()
+        if last_totalizer:
+            ist_tz = pytz.timezone('Asia/Kolkata')
+            ist_created_at = last_totalizer.created_at.astimezone(ist_tz)
+            formatted_date = ist_created_at.strftime('%d %B %I:%M %p')
+            return formatted_date
+        return None
+    
+    def get_is_totalizer_updated(self,asset):
+        last_totalizer = asset.totalizerreadings_set.last()
+        if last_totalizer:
+            ist_tz = pytz.timezone('Asia/Kolkata')
+            ist_created_at = last_totalizer.created_at.astimezone(ist_tz).date()
+            today = timezone.now().astimezone(ist_tz).date()
+            return ist_created_at == today
+        return False
+
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetLocations
         fields = '__all__'
 
+
+
+class TotalizerReadingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TotalizerReadings
+        fields = ['created_at', 'added_by', 'company', 'asset', 'reading', 'image']

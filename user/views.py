@@ -90,7 +90,8 @@ class StaffAPIView(APIView):
 class OrderView(OrderCommonView):
     permission_classes = [IsUser]
 
-
+class GetDieselPrice(GetDieselPrice):
+    permission_classes = [IsUser]
 
 class MyPaginator(PageNumberPagination):
     page_size = 12
@@ -117,15 +118,20 @@ class DashboardView(APIView):
             current_month = datetime.now().month
             current_year = datetime.now().year
 
+            print('qqqqq',id)
             total_price = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
             total_quantity = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
 
-            company_obj = User.objects.get(id=id)
+            monthly_saved_amt = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(saved_amount=Sum('saved_amount'))['saved_amount']
+            total_saved_amt = Order.objects.filter(company=id,order_status='Delivered').aggregate(saved_amount=Sum('saved_amount'))['saved_amount']
+            company_obj = CompanyInfo.objects.get(company=id)
 
             dashboard_data = {
                 'monthly_purchase_cost' : total_price,
                 'monthly_purchase_quantity' : total_quantity,
-                'total_outstanding': company_obj.total_outstanding
+                'total_outstanding': company_obj.total_outstanding,
+                'monthly_saved_amt':monthly_saved_amt,
+                'total_saved_amt':total_saved_amt
             }
 
             return Response(data=dashboard_data,status=status.HTTP_200_OK)
@@ -247,7 +253,7 @@ class CheckAuthView(APIView):
         print('fff',request.user)
         if user.role != 'company':
             try:
-                company_name = User.objects.get(id=user.company_id).username
+                company_name = User.objects.get(id=user.company_id_id).username
             except:
                 company_name = 'Unknown'
         else:
@@ -258,7 +264,7 @@ class CheckAuthView(APIView):
                 'id': user.id,
                 'username': user.username,
                 'user_type': user.role,
-                'company_id':user.company_id,
+                'company_id':user.company_id_id,
                 'company_name':company_name
                 # Include any other user information you need
             }
@@ -266,6 +272,15 @@ class CheckAuthView(APIView):
         return Response(response_data,status=status.HTTP_200_OK)
 
 
+class TotalizerView(APIView):
+    def post(self, request):
+        print('ggggggg')
+        serializer = TotalizerReadingsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(200)
+        print(serializer.errors)
+        return Response(500)
 
 
 

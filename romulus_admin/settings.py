@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 from datetime import timedelta
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +44,8 @@ INSTALLED_APPS = [
     'user',
     'corsheaders',
     'rest_framework',
-    'rest_framework_simplejwt'
+    'rest_framework_simplejwt',
+    'storages'
 ]
 
 REST_FRAMEWORK = {
@@ -130,11 +134,11 @@ WSGI_APPLICATION = 'romulus_admin.wsgi.application'
 DATABASES = {
 
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'rm4',
-        'USER': 'postgres',
-        'PASSWORD':'admin',
-        'HOST':'localhost',
+        'ENGINE': str(os.getenv('DB_ENGINE')),
+        'NAME': str(os.getenv('DB_NAME')),
+        'USER': str(os.getenv('DB_USER')),
+        'PASSWORD':str(os.getenv('DB_PASSWORD')),
+        'HOST':str(os.getenv('DB_HOST')),
         'OPTIONS': {
             'options': '-c timezone=Asia/Kolkata',  # Set the timezone for the database connection
         }
@@ -147,6 +151,9 @@ DATABASES = {
     #     'USER': 'romulus',
     #     'PASSWORD':'admin',
     #     'HOST':'localhost'
+    #     'OPTIONS': {
+    #             'options': '-c timezone=Asia/Kolkata',  # Set the timezone for the database connection
+    #         }
     # }
 
 }
@@ -213,3 +220,26 @@ CSRF_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
+
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = '587'
+EMAIL_HOST_USER = 'muthasirp@gmail.com'
+EMAIL_HOST_PASSWORD = str(os.getenv('EMAIL_HOST_PASSWORD'))
+EMAIL_USE_TLS = True  # or False if your email server doesn't use TLS
+DEFAULT_FROM_EMAIL = 'ROMULUS OIL AND GAS'
+
+
+AWS_ACCESS_KEY_ID = str(os.getenv('AWS_ACCESS_KEY_ID'))
+AWS_SECRET_ACCESS_KEY = str(os.getenv('AWS_SECRET_ACCESS_KEY'))
+AWS_STORAGE_BUCKET_NAME = str(os.getenv('AWS_STORAGE_BUCKET_NAME'))
+AWS_S3_REGION_NAME = str(os.getenv('AWS_S3_REGION_NAME'))  # e.g., 'us-east-1' or 'eu-west-1'
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+AWS_LOCATION = 'media'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'

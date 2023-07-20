@@ -57,8 +57,13 @@ class CompanyCred(APIView):
     @csrf_exempt
     def delete(self, request, pk):
         print(pk)
-        user = get_object_or_404(User, pk=pk)
-        user.delete()
+        company = get_object_or_404(User, pk=pk)
+        employees = User.objects.filter(company_id=company)
+        
+        for employee in  employees :
+            employee.delete()
+
+        company.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -102,6 +107,7 @@ class CompanyLoginView(APIView):
             return res
 
         error = list(serializer.errors.values())[0][0]
+        print(error)
         return Response(error, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -199,19 +205,22 @@ class AddPayment(APIView):
     def post(self, request):
         amount = request.data['payment_price']
         company = request.data['company']
-        company_instance = User.objects.get(id=company)
+        company_instance = CompanyInfo.objects.get(company=company)
+        print('111111111',company_instance.trade_name)
 
         if int(company_instance.total_outstanding) < int(amount):
-            return Response(data=f"Company ({company_instance.username}) outstanding amount is less than the entered amount", status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response(data="Company outstanding amount is less than the entered amount", status=status.HTTP_400_BAD_REQUEST)
         
         serializer = PaymentSerializer(data=request.data)
         if serializer.is_valid():
+            
             with transaction.atomic():
                 serializer.save()
                 company_instance.total_outstanding -= int(amount)
                 company_instance.save()
             return Response(data='Payment added successfully', status=status.HTTP_201_CREATED)
-
+        print(serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class MyPaginator(PageNumberPagination):
@@ -248,10 +257,14 @@ class OrderStatus(APIView):
         if order_status == order.order_status:
             return Response(500)
         
-        company = order.company
+        
+        comp = order.company
+        company = CompanyInfo.objects.get(company=comp)
+        print('fff',company.total_outstanding)
         if order.order_status == 'Delivered':
             # prev_payment = Payments.objects.get(order=order.id)
-            prev_payment = Payments.objects.get(Q(order=order.id) & Q(is_active=True))
+            print('hello',order.id)
+            prev_payment = Payments.objects.get(order=order.id, is_active=True)
             prev_payment.delete()
             
             company.total_outstanding = company.total_outstanding - order.total_price

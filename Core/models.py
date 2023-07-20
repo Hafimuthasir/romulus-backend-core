@@ -2,7 +2,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from datetime import datetime
 from django.utils import timezone
+import os
 import pytz
+import uuid
 
 class CompanyManager(BaseUserManager):
 
@@ -80,7 +82,7 @@ class CompanyInfo(models.Model):
     gstin = models.CharField(max_length=100)
     monthly_purchase_cost = models.IntegerField(blank=True, null=True)
     monthly_purchase_quantity = models.IntegerField(blank=True, null=True)
-    total_outstanding = models.IntegerField(blank=True, null=True)
+    total_outstanding = models.IntegerField(default=0, blank=True, null=True)
     total_purchase_cost = models.IntegerField(blank=True, null=True)
     total_purchase_quantity = models.IntegerField(blank=True, null=True)
     city = models.CharField(max_length=255)
@@ -128,26 +130,75 @@ class Order(models.Model):
     order_type = models.CharField(max_length=100,default='client')
     discount_price = models.FloatField(null=True)
     saved_amount = models.FloatField(null=True)
+    by_admin = models.BooleanField(default=False)
+    ordered_admin = models.ForeignKey(User,on_delete=models.PROTECT,related_name='ordered_admin',null=True,blank=True)
+    order_id = models.CharField(max_length=50, unique=True, editable=False)
     # def save(self, *args, **kwargs):
     #     if not self.id:
     #         tz = pytz.timezone('Asia/Kolkata')
     #         self.created_at = timezone.localtime(timezone.now(), tz)
     #     super().save(*args, **kwargs)
     # payment_status = models.CharField(default=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.pk:  # Only generate the order_id for new instances
+            super().save(*args, **kwargs)
+
+            # Generate unique order ID based on auto-generated ID
+            prefix = 'CL' if self.order_type == 'client' else 'RM'
+            formatted_date = timezone.now().strftime("%d%m%y")  # Format as DDMMYY
+            order_id = f'{prefix}{formatted_date}N{self.id}'
+
+            self.order_id = order_id
+            self.save(update_fields=['order_id'])
+        else:
+            super().save(*args, **kwargs)
 
 
 class Payments(models.Model):
     company = models.ForeignKey(User,on_delete=models.CASCADE)
     payment_type = models.CharField(max_length=100) # paid purchase
-    order = models.ForeignKey(Order,on_delete=models.PROTECT)
+    order = models.ForeignKey(Order,on_delete=models.PROTECT,blank=True,null=True)
     payment_price = models.IntegerField()
     created_at = models.DateTimeField(auto_now=True)
     created_month = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100,blank=True)
     transaction_id = models.CharField(max_length=100,blank=True)
-    is_active = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    payment_id = models.CharField(max_length=50, unique=True, editable=False)
+
+    def save(self, *args, **kwargs):
+        if not self.pk: 
+            super().save(*args, **kwargs)
+
+      
+            prefix = 'PD' if self.payment_type == 'paid' else 'PU'
+            formatted_date = timezone.now().strftime("%d%m%y")  
+            payment_id = f'{prefix}{formatted_date}{self.id}'
+
+            self.payment_id = payment_id
+            self.save(update_fields=['payment_id'])
+        else:
+            super().save(*args, **kwargs)
+    
 
 
     def delete(self, *args, **kwargs):
         self.is_active = False 
         self.save()
+
+
+class TotalizerReadings(models.Model):
+
+    def upload_to(instance, filename):
+        filename_base, filename_ext = os.path.splitext(filename)
+        current_datetime = timezone.now().strftime('%Y_%m_%d_%H_%M_%S')
+        unique_id = str(uuid.uuid4().hex[:2])
+        return f'TotalizerReadings/{current_datetime}_{unique_id}{filename_ext}'
+
+    created_at = models.DateTimeField(auto_now=True)
+    added_by = models.ForeignKey(User,on_delete=models.PROTECT)
+    company = models.ForeignKey(User,on_delete=models.PROTECT, related_name='company')
+    asset = models.ForeignKey(Assets,on_delete=models.PROTECT)
+    reading = models.IntegerField()
+    image = models.FileField(upload_to=upload_to)
