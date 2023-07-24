@@ -8,6 +8,7 @@ from rest_framework import status
 from django.core.mail import send_mail
 from django.conf import settings
 import traceback
+from django.shortcuts import get_object_or_404
 
 class MyPaginator(PageNumberPagination):
     page_size = 12
@@ -85,20 +86,20 @@ class OrderCommonView(APIView):
             return Response({'message':'Diesel Price Has Been Updated...Refreshing Page'},status=status.HTTP_409_CONFLICT)
         
         
-        if not request.data['bypass_totalizer']:
-            asset = Assets.objects.get(id=request.data['asset'])
-            last_totalizer = asset.totalizerreadings_set.last()
-            print(last_totalizer)
-            if last_totalizer:
-                ist_tz = pytz.timezone('Asia/Kolkata')
-                ist_created_at = last_totalizer.created_at.astimezone(ist_tz).date()
-                today = timezone.now().astimezone(ist_tz).date()
-                if ist_created_at != today:
-                    print('looop')
-                    return Response({'message':'Totalizer Is Not Updated Today'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # if not request.data['bypass_totalizer']:
+        #     asset = Assets.objects.get(id=request.data['asset'])
+        #     last_totalizer = asset.totalizerreadings_set.last()
+        #     print(last_totalizer)
+        #     if last_totalizer:
+        #         ist_tz = pytz.timezone('Asia/Kolkata')
+        #         ist_created_at = last_totalizer.created_at.astimezone(ist_tz).date()
+        #         today = timezone.now().astimezone(ist_tz).date()
+        #         if ist_created_at != today:
+        #             print('looop')
+        #             return Response({'message':'Totalizer Is Not Updated Today'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-        saved_amount = float(request.data['quantity']) * float(company_info.discount_price)
+        saved_amount = float(request.data['requested_quantity']) * float(company_info.discount_price)
         request.data['discount_price'] = company_info.discount_price
         request.data['saved_amount'] = saved_amount
         serializer = OrderSerializer(data=request.data)  
@@ -106,12 +107,13 @@ class OrderCommonView(APIView):
             order = serializer.save()
             try:
                 company_info = CompanyInfo.objects.get(company=order.company)
-                saved_amount = order.quantity * company_info.discount_price
+                print('1111',company_info)
+                saved_amount = order.requested_quantity * company_info.discount_price
                 order.discount_price = company_info.discount_price
                 order.saved_amount = saved_amount
-                order.total_price = order.total_price
+                order.requested_total_price = order.requested_total_price
                 order.save()
-
+                
                 try:
                     subject = 'Romulus Order Update !!'
                     recipient_email = 'muthasirhafi@gmail.com'
@@ -191,4 +193,47 @@ class GetDieselPrice(APIView):
             return Response(data,status=200)
         except:
             return Response(500)
+    
+
+class StaffCommonView(APIView):
+
+    def post(self, request):
+        serializer = StaffSerializer(data=request.data)
+        print(request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Staff added successfully'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def get(self, request, id):
+        staff_only = request.query_params.get('staff_only')
+        if staff_only :
+            staff_members = User.objects.filter(company_id=id,role='staff',is_active=True).order_by('username')
+        else:
+            staff_members = User.objects.filter(company_id=id,is_active=True).order_by('username')
+        serializer = GetStaffSerializer(staff_members, many=True)
+        return Response(serializer.data)
+    
+    def put(self, request, id):
+        user = get_object_or_404(User, pk=id)
+        serializer = StaffSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Staff updated successfully'})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self, request, id):
+        instance = get_object_or_404(User, id=id)
+        password = request.data.get('password')
+        if password:
+            instance.password = make_password(password)
+            instance.save()
+            return Response({'message': 'Password changed successfully'})
+        return Response({'message': 'No password provided'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id):
+        user = User.objects.get(id=id)
+        user.delete()
+        return Response({'Deleted Sucessfully'},status=status.HTTP_200_OK)
     

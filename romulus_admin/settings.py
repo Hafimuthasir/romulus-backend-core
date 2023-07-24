@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Core',
     'user',
+    'romulus_staff',
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',

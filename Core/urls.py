@@ -4,6 +4,8 @@ from .views import *
 
 urlpatterns = [
     path('company',CompanyCred.as_view()),
+    path('staff',StaffAPIView.as_view()),
+    path('staff/<int:id>',StaffAPIView.as_view()),
     path('company/<int:pk>',CompanyCred.as_view()),
     path('login',CompanyLoginView.as_view()),
     path('logout',CompanyLogoutView.as_view(), name='logout'),
@@ -20,5 +22,8 @@ urlpatterns = [
     path('assets/<int:id>', AssetsView.as_view()),
     path('order',OrderView.as_view()),
     path('transactions', TransactionsView.as_view()),
+    path('romulus-assets', RomulusAssetsView.as_view()),
+    path('order-details/<int:order_id>',OrderDetailsView.as_view()),
+    path('totalizer', TotalizerView.as_view()),
     path('sampleget',SampleGet.as_view()),
 ]

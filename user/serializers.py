@@ -6,6 +6,7 @@ from Core.serializers import AssetsSerializer
 
 class StaffSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=128, write_only=True)
+    company_id = serializers.CharField(required=False)
 
     class Meta:
         model = User
@@ -62,3 +63,5 @@ class PaymentSerializer(serializers.ModelSerializer):
         if 'created_month' not in data:
             data['created_month'] = datetime.now().strftime("%B")
         return super().to_internal_value(data)
+
+

@@ -272,15 +272,7 @@ class CheckAuthView(APIView):
         return Response(response_data,status=status.HTTP_200_OK)
 
 
-class TotalizerView(APIView):
-    def post(self, request):
-        print('ggggggg')
-        serializer = TotalizerReadingsSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(200)
-        print(serializer.errors)
-        return Response(500)
+
 
 
 

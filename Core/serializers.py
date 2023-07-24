@@ -5,6 +5,7 @@ from django.utils.dateformat import format
 import pytz
 from django.db.models import Sum
 from .models import *
+from romulus_staff.serializers import *
 
 class CompanyInfoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,13 +57,15 @@ class GetCompanySerializer(serializers.ModelSerializer):
         current_year = datetime.now().year
         try:
             info = CompanyInfo.objects.get(company_id=obj.id)
-            total_price = Order.objects.filter(company=obj.id, order_status='Delivered', created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
-            total_quantity = Order.objects.filter(company=obj.id, order_status='Delivered', created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
+            # total_price = Order.objects.filter(company=obj.id, order_status='Delivered', created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
+            # total_quantity = Order.objects.filter(company=obj.id, order_status='Delivered', created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
 
             company_info_data = CompanyInfoSerializer(info).data
-            company_info_data['monthly_purchase_cost'] = total_price if total_price is not None else 0
-            company_info_data['monthly_purchase_quantity'] = total_quantity if total_quantity is not None else 0
+            # company_info_data['monthly_purchase_cost'] = total_price if total_price is not None else 0
+            # company_info_data['monthly_purchase_quantity'] = total_quantity if total_quantity is not None else 0
 
+            company_info_data['monthly_purchase_cost'] = 0
+            company_info_data['monthly_purchase_quantity'] = 0
             return company_info_data
         except CompanyInfo.DoesNotExist:
             return None
@@ -116,8 +119,7 @@ class AssetsSerializer(serializers.ModelSerializer):
     staff_incharge_name = serializers.CharField(source='staff_incharge.username', read_only=True)
     last_order_date = serializers.SerializerMethodField(read_only=True)
     location_name = serializers.CharField(source='assetLocation.location',read_only=True)
-    last_totalizer_updated = serializers.SerializerMethodField(read_only=True)
-    is_totalizer_updated = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Assets
         fields = '__all__'
@@ -139,23 +141,9 @@ class AssetsSerializer(serializers.ModelSerializer):
         
         return None
     
-    def get_last_totalizer_updated(self, asset):
-        last_totalizer = asset.totalizerreadings_set.last()
-        if last_totalizer:
-            ist_tz = pytz.timezone('Asia/Kolkata')
-            ist_created_at = last_totalizer.created_at.astimezone(ist_tz)
-            formatted_date = ist_created_at.strftime('%d %B %I:%M %p')
-            return formatted_date
-        return None
     
-    def get_is_totalizer_updated(self,asset):
-        last_totalizer = asset.totalizerreadings_set.last()
-        if last_totalizer:
-            ist_tz = pytz.timezone('Asia/Kolkata')
-            ist_created_at = last_totalizer.created_at.astimezone(ist_tz).date()
-            today = timezone.now().astimezone(ist_tz).date()
-            return ist_created_at == today
-        return False
+    
+    
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -169,3 +157,77 @@ class TotalizerReadingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TotalizerReadings
         fields = ['created_at', 'added_by', 'company', 'asset', 'reading', 'image']
+
+class RomulusAssetsSerializer(serializers.ModelSerializer):
+    last_totalizer_updated = serializers.SerializerMethodField(read_only=True)
+    is_totalizer_updated = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = RomulusAssets
+        fields = '__all__'
+
+    def get_is_totalizer_updated(self,asset):
+        last_totalizer = asset.totalizerreadings_set.last()
+        if last_totalizer:
+            ist_tz = pytz.timezone('Asia/Kolkata')
+            ist_created_at = last_totalizer.created_at.astimezone(ist_tz).date()
+            today = timezone.now().astimezone(ist_tz).date()
+            return ist_created_at == today
+        return False
+    
+    def get_last_totalizer_updated(self, asset):
+        last_totalizer = asset.totalizerreadings_set.last()
+        if last_totalizer:
+            ist_tz = pytz.timezone('Asia/Kolkata')
+            ist_created_at = last_totalizer.created_at.astimezone(ist_tz)
+            formatted_date = ist_created_at.strftime('%d %B %I:%M %p')
+            return formatted_date
+        return None
+    
+
+class StaffSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(max_length=128, write_only=True)
+    company_id = serializers.CharField(required=False)
+
+    class Meta:
+        model = User
+        fields = ['username', 'number', 'password', 'company_id', 'role']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        validated_data['password'] = make_password(password)
+        # validated_data['user_type'] = 'staff'
+        staff = User.objects.create(**validated_data)
+        return staff
+    
+    def update(self, instance, validated_data):
+        validated_data.pop('password', None)
+        return super().update(instance, validated_data)
+
+class OrderDistributionSerializer(serializers.ModelSerializer):
+    # distribution = OrderDistributionSerializer(many=True, read_only=True)
+    asset_name = serializers.SerializerMethodField(read_only=True)
+    asset_type = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = OrderDistribution
+        fields = '__all__'
+
+    def get_asset_name(self, instance):
+        return instance.asset.assetName
+    
+    def get_asset_type(self, instance):
+        return instance.asset.typeOfAsset
+
+class RomulusDeliverySerializer(serializers.ModelSerializer):
+    distribution = OrderDistributionSerializer(many=True, read_only=True)
+    class Meta:
+        model = RomulusDeliveries
+        fields = '__all__'
+
+
+class OrderDetailsSerializer(serializers.ModelSerializer):
+    deliveries = RomulusDeliverySerializer(many=True, read_only=True)
+    distribution = OrderDistributionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Order
+        fields = '__all__'

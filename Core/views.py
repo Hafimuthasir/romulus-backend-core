@@ -342,6 +342,48 @@ class GetDieselPrice(GetDieselPrice):
     permission_classes = [IsAdmin]
     
 
+class RomulusAssetsView(APIView):
+    permission_classes = [IsAdmin]
+    def get(self, request):
+        assets = RomulusAssets.objects.all()
+        serializer = RomulusAssetsSerializer(assets, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = RomulusAssetsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print(serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class TotalizerView(APIView):
+    def post(self, request):
+        print('ggggggg')
+        serializer = TotalizerReadingsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(200)
+        print(serializer.errors)
+        return Response(500,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+class StaffAPIView(StaffCommonView):
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        
+        staff_members = User.objects.filter(role='romulus_staff',is_active=True).order_by('username')
+        serializer = GetStaffSerializer(staff_members, many=True)
+        return Response(serializer.data)
+    
+class OrderDetailsView(APIView):
+    permission_classes = [IsAdmin]
+    def get(self, request,order_id):
+        order = Order.objects.get(id=order_id)
+        serializer = OrderDetailsSerializer(order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 class SampleGet(APIView):
     def get(self,request):
         tk=request.COOKIES.get('token')

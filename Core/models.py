@@ -45,7 +45,7 @@ class User(AbstractBaseUser):
     username = models.CharField(max_length=255,unique=True)
     email = models.EmailField(blank=True)
     is_admin = models.BooleanField(default=False)
-    role = models.CharField(max_length=10, default='manager')
+    role = models.CharField(max_length=30, default='manager')
     number = models.CharField(max_length=12)
     is_active = models.BooleanField(default=True)
 
@@ -116,15 +116,28 @@ class Assets(models.Model):
 
 
 
+class RomulusAssets(models.Model):
+    name = models.CharField(max_length=100,unique=True)
+    reg_no = models.CharField(max_length=100,null=True,blank=True)
+    asset_type = models.CharField(max_length=100)
+    assigned_staff = models.ForeignKey(User,on_delete=models.PROTECT,null=True,blank=True)
+    location = models.CharField(max_length=200,null=True,blank=True)
+    capacity = models.IntegerField(null=True,blank=True)
+
+    def delete(self, *args, **kwargs):
+        self.is_active = False  
+        self.save()
+
+
 
 class Order(models.Model):
     company = models.ForeignKey(User,on_delete=models.CASCADE)
     ordered_by = models.ForeignKey(User,on_delete=models.CASCADE,related_name='ordered_user')
-    quantity = models.IntegerField()
-    asset = models.ForeignKey(Assets,on_delete=models.CASCADE)
+    requested_quantity = models.IntegerField()
+    asset = models.ForeignKey(Assets,on_delete=models.PROTECT,null=True,blank=True)
     diesel_price = models.FloatField()
-    total_price = models.FloatField()
-    order_status = models.CharField(max_length=100,default='ordered')
+    requested_total_price = models.FloatField()
+    order_status = models.CharField(max_length=100,default='Ordered')
     created_at = models.DateTimeField(auto_now=True)
     ordered_user_type = models.CharField(max_length=100)
     order_type = models.CharField(max_length=100,default='client')
@@ -133,13 +146,11 @@ class Order(models.Model):
     by_admin = models.BooleanField(default=False)
     ordered_admin = models.ForeignKey(User,on_delete=models.PROTECT,related_name='ordered_admin',null=True,blank=True)
     order_id = models.CharField(max_length=50, unique=True, editable=False)
-    # def save(self, *args, **kwargs):
-    #     if not self.id:
-    #         tz = pytz.timezone('Asia/Kolkata')
-    #         self.created_at = timezone.localtime(timezone.now(), tz)
-    #     super().save(*args, **kwargs)
-    # payment_status = models.CharField(default=True)
-    
+    delivered_by = models.ForeignKey(User,on_delete=models.PROTECT,related_name='delivered_by',null=True,blank=True)
+    delivered_vehicle = models.ForeignKey(RomulusAssets,on_delete=models.PROTECT,null=True,blank=True)
+    delivered_quantity = models.FloatField(null=True,blank=True)
+    delivered_cost = models.FloatField(null=True,blank=True)
+
     def save(self, *args, **kwargs):
         if not self.pk:  # Only generate the order_id for new instances
             super().save(*args, **kwargs)
@@ -154,13 +165,40 @@ class Order(models.Model):
         else:
             super().save(*args, **kwargs)
 
+class RomulusDeliveries(models.Model):
+    order = models.ForeignKey(Order,on_delete=models.PROTECT ,related_name='deliveries')
+    bowser = models.ForeignKey(RomulusAssets,on_delete=models.PROTECT)
+    quantity = models.FloatField(null=True,blank=True)
+    staff_1 = models.ForeignKey(User,on_delete=models.PROTECT)
+    staff_2 = models.ForeignKey(User,on_delete=models.PROTECT,null=True,blank=True,related_name='secondary_staff')
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=50)
+    by_admin = models.BooleanField(default=False)
+
+
+class OrderDistribution(models.Model):
+    asset = models.ForeignKey(Assets,on_delete=models.PROTECT)
+    quantity = models.FloatField()
+    price = models.FloatField(null=True,blank=True)
+    created_at = models.DateField(auto_now_add=True)
+    delivery = models.ForeignKey(RomulusDeliveries,on_delete=models.PROTECT, related_name='distribution')
+
+    # def save(self, *args, **kwargs):
+    #     if not self.id:
+    #         tz = pytz.timezone('Asia/Kolkata')
+    #         self.created_at = timezone.localtime(timezone.now(), tz)
+    #     super().save(*args, **kwargs)
+    # payment_status = models.CharField(default=True)
+    
+    
+
 
 class Payments(models.Model):
     company = models.ForeignKey(User,on_delete=models.CASCADE)
     payment_type = models.CharField(max_length=100) # paid purchase
     order = models.ForeignKey(Order,on_delete=models.PROTECT,blank=True,null=True)
     payment_price = models.IntegerField()
-    created_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     created_month = models.CharField(max_length=100)
     payment_method = models.CharField(max_length=100,blank=True)
     transaction_id = models.CharField(max_length=100,blank=True)
@@ -196,9 +234,12 @@ class TotalizerReadings(models.Model):
         unique_id = str(uuid.uuid4().hex[:2])
         return f'TotalizerReadings/{current_datetime}_{unique_id}{filename_ext}'
 
-    created_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     added_by = models.ForeignKey(User,on_delete=models.PROTECT)
     company = models.ForeignKey(User,on_delete=models.PROTECT, related_name='company')
-    asset = models.ForeignKey(Assets,on_delete=models.PROTECT)
-    reading = models.IntegerField()
+    asset = models.ForeignKey(RomulusAssets,on_delete=models.PROTECT)
+    left_reading = models.IntegerField()
+    right_reading = models.IntegerField(null=True,blank=True)
+    total_reading = models.IntegerField(null=True,blank=True)
     image = models.FileField(upload_to=upload_to)
+
