@@ -9,7 +9,8 @@ class DeliverySerializer(serializers.ModelSerializer):
 
 class DistributionSerializer(serializers.ModelSerializer):
     asset_name = serializers.SerializerMethodField()
-    
+    asset_regno = serializers.SerializerMethodField()
+    asset_type = serializers.SerializerMethodField()
     class Meta:
         model = OrderDistribution
         fields = "__all__"
@@ -20,6 +21,11 @@ class DistributionSerializer(serializers.ModelSerializer):
     def get_asset_name(self,obj):
         return obj.asset.assetName
 
+    def get_asset_regno(self,instance):
+        return instance.asset.assetRegistrationNumber if instance.asset.assetRegistrationNumber else None
+    
+    def get_asset_type(self,obj):
+        return obj.asset.typeOfAsset
 
 
 

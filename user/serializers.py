@@ -44,24 +44,28 @@ class OrderSerializer(serializers.ModelSerializer):
     asset_name = serializers.CharField(source='asset.assetName',read_only=True)
     asset_type = serializers.CharField(source='asset.typeOfAsset',read_only=True)
     asset_reg = serializers.CharField(source='asset.assetRegistrationNumber',read_only=True)
+    company_name = serializers.CharField(source='company.username',read_only=True)
+    # delivery_id = serializers.SerializerMethodField()
     class Meta:
         model = Order
         fields = "__all__"
 
+    # def get_delivery_id(self,request)
 
-class PaymentSerializer(serializers.ModelSerializer):
-    created_month = serializers.CharField(max_length=100, required=False)
 
-    class Meta:
-        model = Payments
-        fields = "__all__"
+# class PaymentSerializer(serializers.ModelSerializer):
+#     created_month = serializers.CharField(max_length=100, required=False)
 
-    # def create(self, validated_data):
-    #     validated_data['created_month'] = datetime.now().strftime("%B")
-    #     return super().create(validated_data)
-    def to_internal_value(self, data):
-        if 'created_month' not in data:
-            data['created_month'] = datetime.now().strftime("%B")
-        return super().to_internal_value(data)
+#     class Meta:
+#         model = Payments
+#         fields = "__all__"
+
+#     # def create(self, validated_data):
+#     #     validated_data['created_month'] = datetime.now().strftime("%B")
+#     #     return super().create(validated_data)
+#     def to_internal_value(self, data):
+#         if 'created_month' not in data:
+#             data['created_month'] = datetime.now().strftime("%B")
+#         return super().to_internal_value(data)
 
 

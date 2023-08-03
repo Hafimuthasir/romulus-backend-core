@@ -16,5 +16,6 @@ urlpatterns = [
     
     path('dashboard_data/<int:id>', DashboardView.as_view()),
     path('export-orders/', ExportOrdersView.as_view(), name='export_orders'),
-    path('populateorder',PopulateOrder.as_view())
+    path('get-invoice', GetInvoiceView.as_view()),
+    # path('populateorder',PopulateOrder.as_view())
 ]

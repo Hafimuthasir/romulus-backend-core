@@ -226,6 +226,13 @@ SESSION_COOKIE_SECURE = True
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 
+ADMINS = [
+    ('Muthasir', 'muthasirhafi@gmail.com'),
+]
+
+MANAGERS = ADMINS
+
+SERVER_EMAIL = 'muthasirp@gmail.com'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -234,7 +241,7 @@ EMAIL_HOST_USER = 'muthasirp@gmail.com'
 EMAIL_HOST_PASSWORD = str(os.getenv('EMAIL_HOST_PASSWORD'))
 EMAIL_USE_TLS = True  # or False if your email server doesn't use TLS
 DEFAULT_FROM_EMAIL = 'ROMULUS OIL AND GAS'
-
+SERVER_EMAIL = 'muthasirhafi@gmail.com'
 
 AWS_ACCESS_KEY_ID = str(os.getenv('AWS_ACCESS_KEY_ID'))
 AWS_SECRET_ACCESS_KEY = str(os.getenv('AWS_SECRET_ACCESS_KEY'))

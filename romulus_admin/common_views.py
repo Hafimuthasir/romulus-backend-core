@@ -9,6 +9,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 import traceback
 from django.shortcuts import get_object_or_404
+from rest_framework import generics
 
 class MyPaginator(PageNumberPagination):
     page_size = 12
@@ -21,6 +22,7 @@ class OrderHistoryCommonView(APIView):
    
 
     def get(self, request):
+        print('1111111')
         order_status = request.query_params.get('order_status')
         company_id = request.query_params.get('company_id')
         order_type = request.query_params.get('order_type')
@@ -85,6 +87,7 @@ class OrderCommonView(APIView):
         if request.data['diesel_price'] != company_info.diesel_price or request.data['discount_price'] != company_info.discount_price:
             return Response({'message':'Diesel Price Has Been Updated...Refreshing Page'},status=status.HTTP_409_CONFLICT)
         
+        print('cdscsc')
         
         # if not request.data['bypass_totalizer']:
         #     asset = Assets.objects.get(id=request.data['asset'])
@@ -99,18 +102,18 @@ class OrderCommonView(APIView):
         #             return Response({'message':'Totalizer Is Not Updated Today'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-        saved_amount = float(request.data['requested_quantity']) * float(company_info.discount_price)
+        # saved_amount = float(request.data['requested_quantity']) * float(company_info.discount_price)
         request.data['discount_price'] = company_info.discount_price
-        request.data['saved_amount'] = saved_amount
+        # request.data['saved_amount'] = saved_amount
         serializer = OrderSerializer(data=request.data)  
         if serializer.is_valid():
             order = serializer.save()
             try:
                 company_info = CompanyInfo.objects.get(company=order.company)
                 print('1111',company_info)
-                saved_amount = order.requested_quantity * company_info.discount_price
+                # saved_amount = order.requested_quantity * company_info.discount_price
                 order.discount_price = company_info.discount_price
-                order.saved_amount = saved_amount
+                # order.saved_amount = saved_amount
                 order.requested_total_price = order.requested_total_price
                 order.save()
                 
@@ -172,13 +175,13 @@ class TransactionsCommonView(APIView):
         company = request.query_params.get('company_id')
         
         if payment_type:
-            queryset = Payments.objects.filter(payment_type=payment_type, company=company).order_by('-created_at')
+            queryset = Transaction.objects.filter(transaction_type=payment_type, company=company).order_by('-transaction_date')
         else:
-            queryset = Payments.objects.filter(company=company).order_by('-created_at')
+            queryset = Transaction.objects.filter(company=company).order_by('-transaction_date')
 
         paginator = self.pagination_class()
         paginated_queryset = paginator.paginate_queryset(queryset, request)
-        serializer = PaymentSerializer(paginated_queryset, many=True)
+        serializer = TransactionSerializer(paginated_queryset, many=True)
         
         return paginator.get_paginated_response(serializer.data)
     
@@ -187,8 +190,18 @@ class GetDieselPrice(APIView):
     
     def get(self, request, id):
         try :
+            
             instance = CompanyInfo.objects.get(company_id = id)
-            data = {'diesel_price':instance.diesel_price,'discount':instance.discount_price}
+            
+            location_instances = ClientLocations.objects.filter(company=id)
+            
+            loc_serializer = LocationSerializer(location_instances,many=True)
+            # locations = []
+            # for i in location_instances:
+            #     locations.append(i.location)
+
+            print('lll',loc_serializer.data)
+            data = {'diesel_price':instance.diesel_price,'discount':instance.discount_price,'locations':loc_serializer.data}
 
             return Response(data,status=200)
         except:
@@ -237,3 +250,77 @@ class StaffCommonView(APIView):
         user.delete()
         return Response({'Deleted Sucessfully'},status=status.HTTP_200_OK)
     
+
+class GetInvoiceCommonView(APIView):
+    pagination_class = MyPaginator
+   
+    def get(self, request):
+        # print('1111111')
+        # order_status = request.query_params.get('order_status')
+        company_id = request.query_params.get('company_id')
+        fetch_type = request.query_params.get('fetch_type')
+        
+        if fetch_type == 'all':
+            queryset = Invoice.objects.all().order_by('-created_at')
+        else:
+            print(company_id)
+            print(fetch_type)
+            queryset = Invoice.objects.filter(company_id=company_id).order_by('-created_at')
+        # if order_status:
+        #     queryset = Order.objects.filter(company=company_id,order_type=order_type,order_status=order_status).order_by('-created_at')
+        # else:
+        #     queryset = Order.objects.filter(company=company_id,order_type=order_type,).order_by('-created_at')
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(queryset, request)
+        serializer = InvoiceSerializer(paginated_queryset, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+
+
+# class GetPaymentsCommonView(APIView):
+#     # permission_classes = [IsAdmin]
+#     pagination_class = MyPaginator
+#     def get(self,request):
+#         company_id = request.query_params.get('company_id')
+#         fetch_type = request.query_params.get('fetch_type')
+
+#         if fetch_type == 'all':
+            
+#             queryset = Payment.objects.filter(is_active=True)
+#             print(queryset)
+#         else:
+#             queryset = Payment.objects.filter(company_id=company_id,is_active=True)
+
+#         paginator = self.pagination_class()
+#         paginated_queryset = paginator.paginate_queryset(queryset, request)
+#         serializer = InvoicePaymentSerializer(paginated_queryset, many=True)
+#         return paginator.get_paginated_response(serializer.data)
+        
+
+class GetPaymentsCommonView(generics.ListAPIView):
+    # permission_classes = [IsAdmin]
+    pagination_class = MyPaginator
+    serializer_class = InvoicePaymentSerializer
+
+    def get_queryset(self):
+        company_id = self.request.query_params.get('company_id')
+        fetch_type = self.request.query_params.get('fetch_type')
+
+        if fetch_type == 'all':
+            queryset = Payment.objects.filter(is_active=True).order_by('-created_at')
+            print(queryset)
+        else:
+            queryset = Payment.objects.filter(company_id=company_id, is_active=True).order_by('-created_at')
+
+        return queryset
+    
+
+
+
+# Staff and Admin COMMON VIEW
+class RomulusAssetsCommonView(APIView):
+    # permission_classes = [IsAdmin]
+    def get(self, request):
+        assets = RomulusAssets.objects.all()
+        serializer = RomulusAssetsSerializer(assets, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

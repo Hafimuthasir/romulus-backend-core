@@ -114,16 +114,17 @@ class TransactionsView(TransactionsCommonView):
 class DashboardView(APIView):
     permission_classes = [IsUser]
     def get(self,request,id):
-        try : 
+        
             current_month = datetime.now().month
             current_year = datetime.now().year
 
             print('qqqqq',id)
-            total_price = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(total_price=Sum('total_price'))['total_price']
-            total_quantity = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(total_quantity=Sum('quantity'))['total_quantity']
 
-            monthly_saved_amt = Order.objects.filter(company=id,order_status='Delivered',created_at__year=current_year, created_at__month=current_month).aggregate(saved_amount=Sum('saved_amount'))['saved_amount']
-            total_saved_amt = Order.objects.filter(company=id,order_status='Delivered').aggregate(saved_amount=Sum('saved_amount'))['saved_amount']
+            total_price = Order.objects.filter(company=id,billed=True,created_at__year=current_year, created_at__month=current_month).aggregate(delivered_cost=Sum('delivered_cost'))['delivered_cost']
+            total_quantity = Order.objects.filter(company=id,billed=True,created_at__year=current_year, created_at__month=current_month).aggregate(delivered_quantity=Sum('delivered_quantity'))['delivered_quantity']
+
+            monthly_saved_amt = Order.objects.filter(company=id,billed=True,created_at__year=current_year, created_at__month=current_month).aggregate(saved_amount=Sum('saved_amount'))['saved_amount']
+            total_saved_amt = Order.objects.filter(company=id,billed=True).aggregate(saved_amount=Sum('saved_amount'))['saved_amount']
             company_obj = CompanyInfo.objects.get(company=id)
 
             dashboard_data = {
@@ -136,8 +137,7 @@ class DashboardView(APIView):
 
             return Response(data=dashboard_data,status=status.HTTP_200_OK)
         
-        except:
-            return Response('Something went wrong',status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 
 class ExportOrdersView(APIView):
@@ -272,26 +272,26 @@ class CheckAuthView(APIView):
         return Response(response_data,status=status.HTTP_200_OK)
 
 
+class GetInvoiceView(GetInvoiceCommonView):
+    permission_classes = [IsUser]
 
 
 
 
-
-
-class PopulateOrder(APIView):
-    def get(self,request):
-        company = User.objects.get(id=34)
-        asset = Assets.objects.get(id=20)
-        for i in range(50):
-            order = Order.objects.create(
-                company=company,
-                ordered_by=company,
-                quantity=10,
-                asset=asset,
-                diesel_price=3.5,
-                total_price=35.0,
-                order_status='ordered',
-                created_at=timezone.now(),
-                ordered_user_type='manager'
-            )
-        return Response(200)
+# class PopulateOrder(APIView):
+#     def get(self,request):
+#         company = User.objects.get(id=34)
+#         asset = Assets.objects.get(id=20)
+#         for i in range(50):
+#             order = Order.objects.create(
+#                 company=company,
+#                 ordered_by=company,
+#                 quantity=10,
+#                 asset=asset,
+#                 diesel_price=3.5,
+#                 total_price=35.0,
+#                 order_status='ordered',
+#                 created_at=timezone.now(),
+#                 ordered_user_type='manager'
+#             )
+#         return Response(200)

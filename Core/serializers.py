@@ -6,6 +6,12 @@ import pytz
 from django.db.models import Sum
 from .models import *
 from romulus_staff.serializers import *
+from datetime import date
+import boto3
+from romulus_admin import settings
+from botocore.signers import RequestSigner
+from botocore.config import Config
+
 
 class CompanyInfoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -148,7 +154,7 @@ class AssetsSerializer(serializers.ModelSerializer):
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AssetLocations
+        model = ClientLocations
         fields = '__all__'
 
 
@@ -156,7 +162,7 @@ class LocationSerializer(serializers.ModelSerializer):
 class TotalizerReadingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = TotalizerReadings
-        fields = ['created_at', 'added_by', 'company', 'asset', 'reading', 'image']
+        fields = '__all__'
 
 class RomulusAssetsSerializer(serializers.ModelSerializer):
     last_totalizer_updated = serializers.SerializerMethodField(read_only=True)
@@ -219,15 +225,134 @@ class OrderDistributionSerializer(serializers.ModelSerializer):
 
 class RomulusDeliverySerializer(serializers.ModelSerializer):
     distribution = OrderDistributionSerializer(many=True, read_only=True)
+    bowser_name = serializers.SerializerMethodField(read_only=True)
+    bowser_reg_no = serializers.SerializerMethodField(read_only=True)
+    staff1_name = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = RomulusDeliveries
         fields = '__all__'
+
+    def get_bowser_name (self, instance):
+        return instance.bowser.name if instance.bowser else None
+    
+    def get_bowser_reg_no (self, instance):
+        return instance.bowser.reg_no if instance.bowser else None
+    
+    def get_staff1_name (self, instance):
+        return instance.staff_1.username
 
 
 class OrderDetailsSerializer(serializers.ModelSerializer):
     deliveries = RomulusDeliverySerializer(many=True, read_only=True)
     distribution = OrderDistributionSerializer(many=True, read_only=True)
+    location = LocationSerializer(read_only=True)
+    company_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Order
         fields = '__all__'
+
+    def get_company_name(self,instance):
+        return instance.company.username
+    
+    
+    
+    # def get_delivered_qty()
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    date_option = serializers.CharField(write_only=True, required=False)
+    company_name = serializers.SerializerMethodField()
+    pending_amount = serializers.SerializerMethodField()
+    presigned_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoice
+        fields = '__all__'
+
+    def create(self, validated_data):
+        print(validated_data)
+        date_option = validated_data.pop('date_option', None)
+        invoice_date = (
+            date.today() if date_option == 'today' else validated_data.get('invoice_date')
+        )
+        print(validated_data)
+        validated_data['invoice_date'] = invoice_date
+        print(invoice_date)
+        instance = Invoice.objects.create(**validated_data)
+        return instance
+    
+    def get_company_name(self,instance):
+        return instance.company.username
+    
+    def get_pending_amount(self,instance):
+        return instance.get_pending_amount()
+    
+    # def get_presigned_url(self, instance):
+    #     # Replace 'your_s3_bucket_name' with the actual name of your S3 bucket
+    #     bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+    #     object_key = instance.invoice_file.name
+
+    #     region = 'your_s3_bucket_region'  # Replace with your S3 bucket region
+    #     service = 's3'
+
+    #     # Initialize the RequestSigner
+    #     session = boto3.session.Session()
+    #     credentials = session.get_credentials().get_frozen_credentials()
+    #     signer = RequestSigner(service, region, 'v4', credentials)
+
+    #     # Generate the presigned URL
+    #     url = signer.generate_presigned_url(
+    #         'get_object',
+    #         Params={
+    #             'Bucket': bucket_name,
+    #             'Key': object_key,
+    #         },
+    #         ExpiresIn=3600,  # URL expires in 1 hour (you can adjust this value)
+    #     )
+    #     return url
+
+    # def get_invoice_file_url(self, instance):
+    #     return self.get_presigned_url(instance)
+
+    def get_presigned_url(self, instance):
+        client = boto3.client('s3',
+                                   settings.AWS_S3_REGION_NAME,
+                                #    endpoint_url=settings.AWS_S3_ENDPOINT_URL,
+                                   aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                                   aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                                   config=Config(signature_version='s3v4')
+                                   )
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        object_key = f'media/{instance.invoice_file.name}'
+        # print('ds',object_key)
+        return client.generate_presigned_url(ClientMethod='get_object',Params={'Bucket': bucket_name,
+                                                              'Key': object_key},
+                                         ExpiresIn=3600)
+    
+
+class InvoicePaymentSerializer(serializers.ModelSerializer):
+    company_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payment
+        fields = '__all__'
+
+    def get_company_name(self,instance):
+        return instance.company.username  
+    
+
+class TransactionSerializer(serializers.ModelSerializer):
+    amount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = '__all__'
+
+    def get_amount(self,instance):
+        return instance.amount
+
+    
+    # def get_company_name(self,instance):
+    #     return instance.company.username  

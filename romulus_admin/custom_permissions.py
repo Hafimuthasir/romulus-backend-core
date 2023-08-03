@@ -42,7 +42,7 @@ class IsUser(BasePermission):
             payload = jwt_auth.get_validated_token(access_token)
             user = jwt_auth.get_user(payload)  
             if user.is_authenticated:
-                if not user.is_admin:
+                if not user.is_admin and not user.role == 'romulus_staff' :
                     return True
     
         return False
